@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X v1.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; overflow: hidden; background-color: white; color: black; }
+        .glass { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,0.05); }
+        .dark { background-color: #000000; color: white; }
+        .dark .glass { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(255,255,255,0.1); }
+        .chat-bubble-mine { border-radius: 20px 20px 4px 20px; background: #000000; color: white; }
+        .chat-bubble-theirs { border-radius: 20px 20px 20px 4px; background: #f4f4f5; color: black; border: 1px solid #e4e4e7; }
+        .dark .chat-bubble-theirs { background: #27272a; color: white; border: none; }
+        .dark .chat-bubble-mine { background: #ffffff; color: black; }
+        .active-nav { background: rgba(0, 0, 0, 0.05); border-radius: 24px; color: black !important; }
+        .dark .active-nav { background: rgba(255, 255, 255, 0.1); color: white !important; }
+        ::-webkit-scrollbar { width: 0px; }
+        .loading-screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 9999; }
+        .dark .loading-screen { background: #000; color: white; }
+        input::placeholder { opacity: 0.5; }
+        
+        /* Чекбокс дизайн */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        const e = React.createElement;
+        const { useState, useEffect, useRef } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+            authDomain: "hafland-x-66cdc.firebaseapp.com",
+            projectId: "hafland-x-66cdc",
+            storageBucket: "hafland-x-66cdc.firebasestorage.app",
+            messagingSenderId: "1007892951941",
+            appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        function Icon({ name, size = 24, className = "" }) {
+            const LucideIcon = lucide[name];
+            return LucideIcon ? e(LucideIcon, { size, className }) : null;
+        }
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [view, setView] = useState('chats'); 
+            const [activeChatUser, setActiveChatUser] = useState(null);
+            const [isDark, setIsDark] = useState(false);
+
+            useEffect(() => {
+                const checkSession = async () => {
+                    const savedUid = localStorage.getItem('hafland_uid');
+                    if (savedUid) {
+                        try {
+                            const doc = await db.collection("users").doc(savedUid).get();
+                            if (doc.exists) {
+                                const data = doc.data();
+                                setUser({ uid: savedUid, ...data });
+                                setIsDark(data.darkMode || false);
+                            } else {
+                                localStorage.removeItem('hafland_uid');
+                            }
+                        } catch (err) {
+                            console.error("Session error", err);
+                        }
+                    }
+                    setLoading(false);
+                };
+                checkSession();
+            }, []);
+
+            useEffect(() => {
+                if (isDark) document.body.classList.add('dark');
+                else document.body.classList.remove('dark');
+            }, [isDark]);
+
+            if (loading) {
+                return e('div', { className: 'loading-screen' }, 
+                    e('div', { className: 'w-10 h-10 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin mb-4' }),
+                    e('p', { className: 'font-bold tracking-tighter text-xl' }, 'Hafland X')
+                );
+            }
+
+            if (!user) return e(AuthScreen, { onAuth: (u) => { setUser(u); setIsDark(u.darkMode || false); } });
+
+            let content;
+            if (view === 'chats') content = e(ChatsView, { user, setView, setActiveChatUser });
+            else if (view === 'contacts') content = e(ContactsView, { user, setView, setActiveChatUser });
+            else if (view === 'settings') content = e(SettingsView, { user, isDark, setIsDark });
+            else if (view === 'profile') content = e(ProfileView, { user, onLogout: () => { setUser(null); localStorage.removeItem('hafland_uid'); } });
+            else if (view === 'activeChat') content = e(ChatRoom, { user, target: activeChatUser, setView });
+
+            return e('div', { className: 'h-screen w-screen flex flex-col transition-colors duration-300' },
+                e('main', { className: 'flex-1 overflow-hidden relative' }, content),
+                view !== 'activeChat' && e('nav', { className: 'h-24 flex items-center justify-center px-6' },
+                    e('div', { className: 'glass w-full max-w-sm h-16 rounded-full flex items-center justify-around px-2 shadow-xl' },
+                        e(NavItem, { active: view === 'chats', icon: 'MessageCircle', label: 'Чаты', onClick: () => setView('chats') }),
+                        e(NavItem, { active: view === 'contacts', icon: 'Search', label: 'Люди', onClick: () => setView('contacts') }),
+                        e(NavItem, { active: view === 'settings', icon: 'Settings', label: 'Опции', onClick: () => setView('settings') }),
+                        e(NavItem, { active: view === 'profile', icon: 'User', label: 'Профиль', onClick: () => setView('profile') })
+                    )
+                )
+            );
+        }
+
+        function NavItem({ active, icon, label, onClick }) {
+            return e('button', { 
+                onClick, 
+                className: `flex flex-col items-center justify-center flex-1 h-12 transition-all ${active ? 'active-nav' : 'text-gray-400'}`
+            }, 
+                e(Icon, { name: icon, size: 20 }),
+                active && e('span', { className: 'text-[9px] font-black uppercase mt-0.5' }, label)
+            );
+        }
+
+        function AuthScreen({ onAuth }) {
+            const [isLogin, setIsLogin] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [agreed, setAgreed] = useState(false);
+            const [proc, setProc] = useState(false);
+
+            const handleAuth = async () => {
+                if (proc) return;
+                setError('');
+                
+                // Проверка на согласие ТОЛЬКО при регистрации
+                if (!isLogin && !agreed) return setError('Вы должны принять условия Hafland X');
+                
+                if (!username || !password) return setError('Заполните все поля');
+                
+                const cleanName = username.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanName.length < 3) return setError('Ник слишком короткий (мин. 3 симв.)');
+                
+                setProc(true);
+                try {
+                    const userRef = db.collection("users").doc(cleanName);
+                    const doc = await userRef.get();
+
+                    if (isLogin) {
+                        if (!doc.exists) {
+                            setError('Пользователь не найден');
+                        } else if (doc.data().password !== password) {
+                            setError('Неверный пароль');
+                        } else {
+                            localStorage.setItem('hafland_uid', cleanName);
+                            onAuth({ uid: cleanName, ...doc.data() });
+                        }
+                    } else {
+                        if (doc.exists) {
+                            setError('Этот ник уже занят');
+                        } else {
+                            const newUser = {
+                                username: cleanName,
+                                password: password,
+                                uid: cleanName,
+                                photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanName}`,
+                                isDiscoverable: true,
+                                darkMode: false,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                termsAccepted: true
+                            };
+                            await userRef.set(newUser);
+                            localStorage.setItem('hafland_uid', cleanName);
+                            onAuth(newUser);
+                        }
+                    }
+                } catch (e) { 
+                    setError('Ошибка доступа. Проверьте соединение.');
+                }
+                setProc(false);
+            };
+
+            return e('div', { className: 'h-screen w-screen flex flex-col items-center justify-center p-10 bg-white dark:bg-black transition-colors' },
+                e('div', { className: 'w-full max-w-xs' },
+                    e('h1', { className: 'text-4xl font-black mb-1 text-center italic tracking-tighter dark:text-white' }, 'HAFLAND X'),
+                    e('p', { className: 'text-center text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em] mb-10' }, 'v1.1 Decentralized System'),
+                    
+                    e('div', { className: 'space-y-4' },
+                        e('div', {}, 
+                            e('input', { 
+                                type: 'text', placeholder: 'Никнейм',
+                                className: 'w-full bg-gray-100 dark:bg-zinc-900 dark:text-white p-4 rounded-2xl outline-none font-bold transition-all focus:ring-2 focus:ring-black dark:focus:ring-white',
+                                value: username, onChange: (ev) => setUsername(ev.target.value)
+                            })
+                        ),
+                        e('div', {}, 
+                            e('input', { 
+                                type: 'password', placeholder: 'Пароль',
+                                className: 'w-full bg-gray-100 dark:bg-zinc-900 dark:text-white p-4 rounded-2xl outline-none font-bold transition-all focus:ring-2 focus:ring-black dark:focus:ring-white',
+                                value: password, onChange: (ev) => setPassword(ev.target.value)
+                            })
+                        ),
+                        
+                        // Блок согласия
+                        !isLogin && e('div', { 
+                            className: `flex gap-3 items-start p-4 rounded-2xl border transition-all ${agreed ? 'border-black dark:border-white bg-gray-50 dark:bg-zinc-900' : 'border-gray-100 dark:border-zinc-800'}` 
+                        },
+                            e('input', { 
+                                type: 'checkbox', 
+                                id: 'terms',
+                                checked: agreed, 
+                                onChange: e => setAgreed(e.target.checked) 
+                            }),
+                            e('label', { htmlFor: 'terms', className: 'text-[9px] text-gray-500 font-bold uppercase leading-tight cursor-pointer' }, 
+                                'Я подтверждаю, что Hafland не несёт ответственности за мои действия внутри сайта и передачу информации.'
+                            )
+                        ),
+
+                        error && e('p', { className: 'text-red-500 text-[10px] text-center font-black animate-pulse' }, error),
+                        
+                        e('button', { 
+                            onClick: handleAuth,
+                            disabled: proc || (!isLogin && !agreed),
+                            className: `w-full p-4 rounded-2xl font-black active:scale-95 transition-all shadow-lg ${
+                                (proc || (!isLogin && !agreed)) 
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                : 'bg-black dark:bg-white dark:text-black text-white'
+                            }`
+                        }, proc ? 'ОБРАБОТКА...' : (isLogin ? 'ВОЙТИ' : 'ЗАРЕГИСТРИРОВАТЬСЯ')),
+                        
+                        e('button', { 
+                            onClick: () => { setIsLogin(!isLogin); setError(''); },
+                            className: 'w-full text-blue-500 font-bold text-[10px] uppercase tracking-wider mt-2'
+                        }, isLogin ? 'Нет аккаунта? Создать' : 'Уже есть профиль? Войти')
+                    )
+                )
+            );
+        }
+
+        function ChatsView({ user, setView, setActiveChatUser }) {
+            const [items, setItems] = useState([]);
+            useEffect(() => {
+                const unsub = db.collection("chats")
+                    .where("participants", "array-contains", user.uid)
+                    .onSnapshot(async snap => {
+                        const res = [];
+                        for (const d of snap.docs) {
+                            const data = d.data();
+                            const otherId = data.participants.find(p => p !== user.uid);
+                            const otherDoc = await db.collection("users").doc(otherId).get();
+                            if (otherDoc.exists) {
+                                res.push({ id: d.id, last: data.lastMessage, other: otherDoc.data(), time: data.updatedAt });
+                            }
+                        }
+                        setItems(res.sort((a,b) => (b.time?.seconds || 0) - (a.time?.seconds || 0)));
+                    }, () => {});
+                return unsub;
+            }, []);
+
+            return e('div', { className: 'p-6 h-full overflow-y-auto' },
+                e('h2', { className: 'text-3xl font-black mb-6 mt-4 italic dark:text-white' }, 'Chats'),
+                items.length === 0 && e('div', { className: 'text-center py-20 opacity-20' }, 
+                    e(Icon, { name: 'MessageSquare', size: 48, className: 'mx-auto mb-2' }), 
+                    e('p', { className: 'font-bold dark:text-white' }, 'ПУСТО')
+                ),
+                items.map(i => e('div', { 
+                    key: i.id, onClick: () => { setActiveChatUser(i.other); setView('activeChat'); },
+                    className: 'flex items-center gap-4 p-4 rounded-3xl bg-gray-50 dark:bg-zinc-900 mb-3 active:scale-95 transition-all border border-gray-100 dark:border-zinc-800'
+                }, 
+                    e('img', { src: i.other?.photoURL, className: 'w-14 h-14 rounded-full bg-white shadow-sm' }),
+                    e('div', { className: 'flex-1 overflow-hidden' },
+                        e('h3', { className: 'font-black dark:text-white' }, i.other?.username),
+                        e('p', { className: 'text-xs text-gray-400 truncate font-medium' }, i.last || 'Начните диалог')
+                    )
+                ))
+            );
+        }
+
+        function ContactsView({ user, setView, setActiveChatUser }) {
+            const [users, setUsers] = useState([]);
+            const [search, setSearch] = useState('');
+
+            useEffect(() => {
+                db.collection("users").where("isDiscoverable", "==", true).limit(50).get().then(s => {
+                    setUsers(s.docs.map(d => d.data()).filter(u => u.uid !== user.uid));
+                });
+            }, []);
+
+            const filtered = users.filter(u => u.username.includes(search.toLowerCase()));
+
+            return e('div', { className: 'p-6 h-full overflow-y-auto' },
+                e('h2', { className: 'text-3xl font-black mb-6 mt-4 italic dark:text-white' }, 'Explore'),
+                e('input', {
+                    className: 'w-full bg-gray-100 dark:bg-zinc-900 p-4 rounded-2xl mb-6 outline-none dark:text-white font-bold',
+                    placeholder: 'Поиск по нику...', value: search, onChange: ev => setSearch(ev.target.value)
+                }),
+                filtered.map(u => e('div', { key: u.uid, className: 'flex items-center justify-between p-4 glass rounded-3xl mb-3' },
+                    e('div', { className: 'flex items-center gap-3' },
+                        e('img', { src: u.photoURL, className: 'w-10 h-10 rounded-full bg-white' }),
+                        e('span', { className: 'font-bold dark:text-white' }, u.username)
+                    ),
+                    e('button', { 
+                        onClick: () => { setActiveChatUser(u); setView('activeChat'); },
+                        className: 'bg-black dark:bg-white dark:text-black text-white px-6 py-2 rounded-xl text-[10px] font-black'
+                    }, 'ЧАТ')
+                ))
+            );
+        }
+
+        function ChatRoom({ user, target, setView }) {
+            const [text, setText] = useState('');
+            const [messages, setMessages] = useState([]);
+            const id = [user.uid, target.uid].sort().join('_');
+            const endRef = useRef();
+
+            useEffect(() => {
+                const unsub = db.collection("chats").doc(id).collection("messages").orderBy("createdAt", "asc").onSnapshot(s => {
+                    setMessages(s.docs.map(d => ({ id: d.id, ...d.data() })));
+                    setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }, () => {});
+                return unsub;
+            }, [id]);
+
+            const send = async () => {
+                if (!text.trim()) return;
+                const m = text; setText('');
+                const ts = firebase.firestore.FieldValue.serverTimestamp();
+                await db.collection("chats").doc(id).set({ participants: [user.uid, target.uid], lastMessage: m, updatedAt: ts }, { merge: true });
+                await db.collection("chats").doc(id).collection("messages").add({ text: m, senderId: user.uid, createdAt: ts });
+            };
+
+            return e('div', { className: 'h-full flex flex-col bg-white dark:bg-black' },
+                e('header', { className: 'p-4 glass flex items-center gap-4 z-10' },
+                    e('button', { onClick: () => setView('chats'), className: 'dark:text-white p-2' }, e(Icon, { name: 'ChevronLeft' })),
+                    e('img', { src: target.photoURL, className: 'w-10 h-10 rounded-full bg-white' }),
+                    e('div', {}, 
+                        e('p', { className: 'font-black dark:text-white leading-none' }, target.username),
+                        e('p', { className: 'text-[9px] text-blue-500 font-bold tracking-widest' }, 'H-X SECURE')
+                    )
+                ),
+                e('div', { className: 'flex-1 overflow-y-auto p-4 space-y-4' },
+                    messages.map(m => e('div', { key: m.id, className: `flex ${m.senderId === user.uid ? 'justify-end' : 'justify-start'}` },
+                        e('div', { className: `max-w-[75%] p-4 font-medium text-sm shadow-sm ${m.senderId === user.uid ? 'chat-bubble-mine' : 'chat-bubble-theirs'}` }, m.text)
+                    )),
+                    e('div', { ref: endRef })
+                ),
+                e('div', { className: 'p-4 glass flex gap-2' },
+                    e('input', { 
+                        className: 'flex-1 bg-gray-100 dark:bg-zinc-900 p-4 rounded-3xl outline-none text-sm font-bold dark:text-white',
+                        placeholder: 'Сообщение...', value: text, onChange: ev => setText(ev.target.value),
+                        onKeyPress: ev => ev.key === 'Enter' && send()
+                    }),
+                    e('button', { onClick: send, className: 'bg-black dark:bg-white dark:text-black text-white w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all' }, e(Icon, { name: 'ArrowUp', size: 18 }))
+                )
+            );
+        }
+
+        function SettingsView({ user, isDark, setIsDark }) {
+            const [disc, setDisc] = useState(user.isDiscoverable);
+            const upd = async (key, val) => {
+                await db.collection("users").doc(user.uid).update({ [key]: val });
+            };
+
+            return e('div', { className: 'p-6' },
+                e('h2', { className: 'text-3xl font-black mb-10 mt-4 italic dark:text-white' }, 'Options'),
+                e('div', { className: 'space-y-4' },
+                    e('div', { className: 'flex justify-between items-center p-5 glass rounded-3xl' },
+                        e('span', { className: 'font-bold dark:text-white' }, 'Тёмная тема'),
+                        e('button', { 
+                            onClick: () => { setIsDark(!isDark); upd('darkMode', !isDark); },
+                            className: `w-12 h-6 rounded-full transition-all relative ${isDark ? 'bg-white' : 'bg-black'}`
+                        }, e('div', { className: `w-4 h-4 rounded-full absolute top-1 transition-all ${isDark ? 'right-1 bg-black' : 'left-1 bg-white'}` }))
+                    ),
+                    e('div', { className: 'flex justify-between items-center p-5 glass rounded-3xl' },
+                        e('span', { className: 'font-bold dark:text-white' }, 'Публичный поиск'),
+                        e('button', { 
+                            onClick: () => { setDisc(!disc); upd('isDiscoverable', !disc); },
+                            className: `w-12 h-6 rounded-full transition-all relative ${disc ? 'bg-black dark:bg-white' : 'bg-gray-200'}`
+                        }, e('div', { className: `w-4 h-4 rounded-full absolute top-1 transition-all ${disc ? 'right-1 bg-white dark:bg-black' : 'left-1 bg-white dark:bg-zinc-500'}` }))
+                    )
+                )
+            );
+        }
+
+        function ProfileView({ user, onLogout }) {
+            return e('div', { className: 'p-6 flex flex-col items-center' },
+                e('h2', { className: 'text-3xl font-black mb-10 mt-4 italic self-start dark:text-white' }, 'Profile'),
+                e('div', { className: 'relative mb-6' }, 
+                   e('img', { src: user.photoURL, className: 'w-32 h-32 rounded-[40px] mb-4 border-4 border-black dark:border-white p-1 shadow-2xl bg-white' })
+                ),
+                e('h3', { className: 'text-2xl font-black mb-1 dark:text-white' }, `@${user.username}`),
+                e('p', { className: 'text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-10' }, 'Protected Member'),
+                e('button', { onClick: onLogout, className: 'w-full bg-red-50 text-red-500 p-5 rounded-3xl font-black active:scale-95 transition-all' }, 'ВЫЙТИ'),
+                e('p', { className: 'mt-10 text-[8px] text-gray-300 font-bold' }, 'SESSION_ID: ' + btoa(user.uid).slice(0,10))
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(e(App));
+    </script>
+</body>
+</html>
+
+
