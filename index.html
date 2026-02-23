@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X v1.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        
+        /* Парящая навигация как на скриншоте */
+        .floating-nav-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 420px;
+            z-index: 100;
+        }
+
+        .floating-nav {
+            background: rgba(28, 36, 48, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 40px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 10px 0;
+            border-radius: 32px;
+            color: #94a3b8;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .nav-btn i {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+        }
+
+        .nav-btn span {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Анимация загрузки */
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .auth-input {
+            background: #111827;
+            border: 1px solid #1f2937;
+            color: white;
+            padding: 16px;
+            border-radius: 18px;
+            width: 100%;
+            outline: none;
+            font-weight: 500;
+        }
+        .auth-input:focus { border-color: #3b82f6; }
+
+        .msg-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="h-screen flex flex-col relative max-w-md mx-auto">
+        <!-- Экран -->
+        <div id="screen" class="flex-1 overflow-y-auto no-scrollbar pb-32"></div>
+
+        <!-- Навигация (скрыта по умолчанию) -->
+        <div id="nav-wrapper" class="floating-nav-container hidden">
+            <nav class="floating-nav">
+                <button onclick="window.setTab('chats')" id="tab-chats" class="nav-btn active">
+                    <i data-lucide="message-circle"></i>
+                    <span>Чаты</span>
+                </button>
+                <button onclick="window.setTab('contacts')" id="tab-contacts" class="nav-btn">
+                    <i data-lucide="users"></i>
+                    <span>Контакты</span>
+                </button>
+                <button onclick="window.setTab('settings')" id="tab-settings" class="nav-btn">
+                    <i data-lucide="settings"></i>
+                    <span>Настройки</span>
+                </button>
+                <button onclick="window.setTab('profile')" id="tab-profile" class="nav-btn">
+                    <i data-lucide="user"></i>
+                    <span>Профиль</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+            authDomain: "hafland-x-66cdc.firebaseapp.com",
+            projectId: "hafland-x-66cdc",
+            storageBucket: "hafland-x-66cdc.firebasestorage.app",
+            messagingSenderId: "1007892951941",
+            appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const APP_ID = "hafland-x-v4-fix";
+
+        let user = null;
+        let authMode = 'login';
+        let currentTab = 'chats';
+
+        const updateIcons = () => lucide.createIcons();
+
+        // --- AUTH LOGIC (FIXED RULE #3) ---
+        window.handleAuth = async () => {
+            const nick = document.getElementById('nick').value.trim().toLowerCase();
+            const pass = document.getElementById('pass').value;
+            const btn = document.getElementById('auth-btn');
+
+            if (!nick || !pass) return alert("Введите все данные");
+            
+            if (authMode === 'register' && !document.getElementById('agree_check').checked) {
+                return alert("Вы должны принять условия");
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner mx-auto"></div>';
+
+            try {
+                // ШАГ 1: Сначала авторизуем пользователя в Firebase Auth
+                await signInAnonymously(auth);
+
+                // ШАГ 2: Теперь, когда у нас есть права, работаем с Firestore
+                const userRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', nick);
+                const snap = await getDoc(userRef);
+
+                if (authMode === 'login') {
+                    if (snap.exists() && snap.data().password === pass) {
+                        localStorage.setItem('hx_user', nick);
+                        user = snap.data();
+                        startApp();
+                    } else {
+                        throw new Error("Неверный ник или пароль");
+                    }
+                } else {
+                    if (snap.exists()) throw new Error("Ник уже занят");
+                    
+                    const userData = {
+                        nickname: nick,
+                        password: pass,
+                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${nick}`,
+                        created: Date.now()
+                    };
+                    await setDoc(userRef, userData);
+                    localStorage.setItem('hx_user', nick);
+                    user = userData;
+                    startApp();
+                }
+            } catch (e) {
+                alert("Ошибка: " + e.message);
+                btn.disabled = false;
+                btn.innerText = authMode === 'login' ? 'Войти' : 'Создать аккаунт';
+            }
+        };
+
+        window.toggleAuthMode = () => {
+            authMode = authMode === 'login' ? 'register' : 'login';
+            renderAuth();
+        };
+
+        function renderAuth() {
+            const isReg = authMode === 'register';
+            document.getElementById('nav-wrapper').classList.add('hidden');
+            document.getElementById('screen').innerHTML = `
+                <div class="p-8 pt-24 flex flex-col h-full">
+                    <h1 class="text-5xl font-extrabold text-blue-500 tracking-tighter mb-2">Hafland X</h1>
+                    <p class="text-zinc-500 font-medium mb-12">Версия 1.0.0 Stable</p>
+                    
+                    <div class="space-y-4">
+                        <input id="nick" type="text" placeholder="Никнейм" class="auth-input">
+                        <input id="pass" type="password" placeholder="Пароль" class="auth-input">
+                        
+                        ${isReg ? `
+                        <div class="flex gap-3 items-start p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                            <input type="checkbox" id="agree_check" class="mt-1 w-5 h-5 rounded accent-blue-500">
+                            <label for="agree_check" class="text-[11px] text-zinc-400 font-medium">
+                                Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент.
+                            </label>
+                        </div>
+                        ` : ''}
+
+                        <button id="auth-btn" onclick="window.handleAuth()" class="w-full bg-blue-600 p-4 rounded-2xl font-bold text-lg mt-4 active:scale-95 transition-transform">
+                            ${isReg ? 'ЗАРЕГИСТРИРОВАТЬСЯ' : 'ВОЙТИ'}
+                        </button>
+                        
+                        <button onclick="window.toggleAuthMode()" class="w-full text-blue-500 font-bold text-sm mt-6">
+                            ${isReg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Создать'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function startApp() {
+            document.getElementById('nav-wrapper').classList.remove('hidden');
+            window.setTab(currentTab);
+        }
+
+        window.setTab = (tab) => {
+            currentTab = tab;
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            const screen = document.getElementById('screen');
+            if (tab === 'chats') renderChats(screen);
+            if (tab === 'contacts') renderContacts(screen);
+            if (tab === 'profile') renderProfile(screen);
+            if (tab === 'settings') renderSettings(screen);
+            updateIcons();
+        };
+
+        function renderChats(el) {
+            el.innerHTML = `<div class="p-6"><h2 class="text-3xl font-black mb-6">Чаты</h2><div id="chat-list" class="space-y-2"></div></div>`;
+            // Слушатель сообщений для списка чатов
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const list = document.getElementById('chat-list');
+                if (!list) return;
+                const latest = new Map();
+                s.docs.forEach(d => {
+                    const m = d.data();
+                    if (m.f === user.nickname || m.t === user.nickname) {
+                        const other = m.f === user.nickname ? m.t : m.f;
+                        if (!latest.has(other) || latest.get(other).ts < m.ts) latest.set(other, m);
+                    }
+                });
+                
+                if (latest.size === 0) {
+                    list.innerHTML = `<p class="text-center text-zinc-600 mt-20">Пока нет сообщений</p>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+                [...latest.entries()].sort((a,b) => b[1].ts - a[1].ts).forEach(([nick, m]) => {
+                    list.innerHTML += `
+                        <div onclick="window.openRoom('${nick}')" class="flex items-center gap-4 p-4 bg-zinc-900/50 rounded-3xl active:bg-zinc-800 transition-colors">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${nick}" class="w-14 h-14 rounded-full bg-zinc-800">
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-bold text-lg">${nick}</span>
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase">сейчас</span>
+                                </div>
+                                <p class="text-zinc-400 text-sm truncate">${m.txt}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        window.openRoom = (nick) => {
+            document.getElementById('nav-wrapper').classList.add('hidden');
+            const screen = document.getElementById('screen');
+            screen.innerHTML = `
+                <div class="flex flex-col h-screen bg-black">
+                    <div class="p-4 flex items-center gap-4 border-b border-zinc-900 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
+                        <button onclick="window.setTab('chats')"><i data-lucide="chevron-left"></i></button>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${nick}" class="w-10 h-10 rounded-full">
+                        <span class="font-bold text-xl">${nick}</span>
+                    </div>
+                    <div id="msg-flow" class="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar pb-32"></div>
+                    <div class="p-4 bg-black border-t border-zinc-900 flex gap-2 fixed bottom-0 left-0 right-0 max-w-md mx-auto">
+                        <input id="m-inp" type="text" placeholder="Сообщение" class="flex-1 p-4 bg-zinc-900 rounded-2xl outline-none font-medium">
+                        <button onclick="window.send('${nick}')" class="bg-blue-600 p-4 rounded-2xl"><i data-lucide="send"></i></button>
+                    </div>
+                </div>
+            `;
+            updateIcons();
+            
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const flow = document.getElementById('msg-flow');
+                if (!flow) return;
+                const msgs = s.docs.map(d => d.data())
+                    .filter(m => (m.f === user.nickname && m.t === nick) || (m.f === nick && m.t === user.nickname))
+                    .sort((a,b) => a.ts - b.ts);
+                
+                flow.innerHTML = '';
+                msgs.forEach(m => {
+                    const isMe = m.f === user.nickname;
+                    flow.innerHTML += `
+                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                            <div class="msg-bubble ${isMe ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-100'}">
+                                ${m.txt}
+                            </div>
+                        </div>
+                    `;
+                });
+                flow.scrollTop = flow.scrollHeight;
+            });
+        };
+
+        window.send = async (to) => {
+            const inp = document.getElementById('m-inp');
+            const val = inp.value.trim();
+            if (!val) return;
+            inp.value = '';
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), {
+                f: user.nickname, t: to, txt: val, ts: Date.now()
+            });
+        };
+
+        function renderContacts(el) {
+            el.innerHTML = `<div class="p-6"><h2 class="text-3xl font-black mb-6">Поиск</h2><div id="user-list" class="space-y-3"></div></div>`;
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+                const list = document.getElementById('user-list');
+                if (!list) return;
+                list.innerHTML = '';
+                s.docs.forEach(d => {
+                    const u = d.data();
+                    if (u.nickname === user.nickname) return;
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between p-4 bg-zinc-900 rounded-3xl">
+                            <div class="flex items-center gap-4">
+                                <img src="${u.avatar}" class="w-12 h-12 rounded-full">
+                                <span class="font-bold text-lg">${u.nickname}</span>
+                            </div>
+                            <button onclick="window.openRoom('${u.nickname}')" class="bg-blue-600 px-6 py-2 rounded-full text-xs font-black">ЧАТ</button>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function renderProfile(el) {
+            el.innerHTML = `
+                <div class="p-10 flex flex-col items-center">
+                    <img src="${user.avatar}" class="w-32 h-32 rounded-full border-4 border-blue-600/20 shadow-2xl mb-6">
+                    <h2 class="text-3xl font-black mb-1">${user.nickname}</h2>
+                    <p class="text-zinc-500 font-bold mb-12 uppercase tracking-widest text-[10px]">Личный профиль</p>
+                    <button onclick="localStorage.clear(); location.reload();" class="w-full p-5 bg-red-500/10 text-red-500 font-black rounded-3xl">ВЫЙТИ ИЗ АККАУНТА</button>
+                </div>
+            `;
+        }
+
+        function renderSettings(el) {
+            el.innerHTML = `<div class="p-6"><h2 class="text-3xl font-black mb-6">Настройки</h2><p class="text-zinc-500">Дополнительные опции в разработке...</p></div>`;
+        }
+
+        // Авто-вход
+        onAuthStateChanged(auth, async (fbUser) => {
+            const saved = localStorage.getItem('hx_user');
+            if (fbUser && saved) {
+                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', saved));
+                if (snap.exists()) {
+                    user = snap.data();
+                    startApp();
+                } else {
+                    renderAuth();
+                }
+            } else {
+                renderAuth();
+            }
+        });
+
+    </script>
+</body>
+</html>
+
+ 
