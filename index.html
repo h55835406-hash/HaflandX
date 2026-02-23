@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        
+        /* Стили плавающей навигации по вашему скриншоту */
+        .floating-nav-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            z-index: 100;
+        }
+
+        .floating-nav {
+            background: rgba(23, 23, 23, 0.8);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 35px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 6px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 10px 0;
+            border-radius: 28px;
+            color: #9ca3af;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .nav-btn i {
+            width: 22px;
+            height: 22px;
+            margin-bottom: 2px;
+        }
+
+        .nav-btn span {
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .loader-spin {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .auth-field {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            color: white;
+            padding: 18px;
+            border-radius: 20px;
+            width: 100%;
+            outline: none;
+            font-size: 16px;
+        }
+        .auth-field:focus { border-color: #3b82f6; }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 22px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        
+        #screen { height: 100vh; overflow-y: auto; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="app-root" class="max-w-md mx-auto relative h-screen">
+        <div id="screen" class="no-scrollbar"></div>
+
+        <div id="navigation" class="floating-nav-container hidden">
+            <nav class="floating-nav">
+                <button onclick="window.switchTab('chats')" id="btn-chats" class="nav-btn active">
+                    <i data-lucide="message-circle"></i>
+                    <span>Чаты</span>
+                </button>
+                <button onclick="window.switchTab('contacts')" id="btn-contacts" class="nav-btn">
+                    <i data-lucide="users"></i>
+                    <span>Контакты</span>
+                </button>
+                <button onclick="window.switchTab('settings')" id="btn-settings" class="nav-btn">
+                    <i data-lucide="settings"></i>
+                    <span>Настройки</span>
+                </button>
+                <button onclick="window.switchTab('profile')" id="btn-profile" class="nav-btn">
+                    <i data-lucide="user"></i>
+                    <span>Профиль</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // КОНФИГУРАЦИЯ FIREBASE (ВАША)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+            authDomain: "hafland-x-66cdc.firebaseapp.com",
+            projectId: "hafland-x-66cdc",
+            storageBucket: "hafland-x-66cdc.firebasestorage.app",
+            messagingSenderId: "1007892951941",
+            appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const APP_ID = "hafland-x-v4-fix"; // Используем ID под который написаны правила выше
+
+        let currentUser = null;
+        let isRegisterMode = false;
+        let activeTab = 'chats';
+
+        const refreshIcons = () => lucide.createIcons();
+
+        // Основная функция входа в систему
+        window.processAuth = async () => {
+            const nick = document.getElementById('nick-in').value.trim().toLowerCase();
+            const pass = document.getElementById('pass-in').value;
+            const btn = document.getElementById('auth-submit');
+
+            if (!nick || !pass) return alert("Заполните поля");
+            if (isRegisterMode && !document.getElementById('agree-cb').checked) return alert("Примите соглашение");
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loader-spin mx-auto"></div>';
+
+            try {
+                // ПРАВИЛО №3: СНАЧАЛА АВТОРИЗАЦИЯ FIREBASE
+                const authResult = await signInAnonymously(auth);
+                const uid = authResult.user.uid;
+
+                const userRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', nick);
+                const userSnap = await getDoc(userRef);
+
+                if (!isRegisterMode) {
+                    // Вход
+                    if (userSnap.exists() && userSnap.data().password === pass) {
+                        localStorage.setItem('hx_nick', nick);
+                        currentUser = userSnap.data();
+                        launchMessenger();
+                    } else {
+                        throw new Error("Неверный логин или пароль");
+                    }
+                } else {
+                    // Регистрация
+                    if (userSnap.exists()) throw new Error("Никнейм занят");
+                    
+                    const newUserData = {
+                        nickname: nick,
+                        password: pass,
+                        uid: uid,
+                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${nick}`,
+                        ts: Date.now()
+                    };
+                    await setDoc(userRef, newUserData);
+                    localStorage.setItem('hx_nick', nick);
+                    currentUser = newUserData;
+                    launchMessenger();
+                }
+            } catch (err) {
+                alert(err.message);
+                btn.disabled = false;
+                btn.innerText = isRegisterMode ? 'ЗАРЕГИСТРИРОВАТЬСЯ' : 'ВОЙТИ';
+            }
+        };
+
+        window.toggleAuth = () => {
+            isRegisterMode = !isRegisterMode;
+            renderAuthPage();
+        };
+
+        function renderAuthPage() {
+            document.getElementById('navigation').classList.add('hidden');
+            document.getElementById('screen').innerHTML = `
+                <div class="p-8 pt-20 flex flex-col min-h-screen">
+                    <h1 class="text-5xl font-black text-blue-500 tracking-tighter mb-1">Hafland X</h1>
+                    <p class="text-zinc-500 font-bold mb-10">Версия 1.0.0 Stable</p>
+                    
+                    <div class="space-y-4">
+                        <input id="nick-in" type="text" placeholder="Никнейм" class="auth-field">
+                        <input id="pass-in" type="password" placeholder="Пароль" class="auth-field">
+                        
+                        ${isRegisterMode ? `
+                        <div class="flex gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-3xl">
+                            <input type="checkbox" id="agree-cb" class="w-6 h-6 accent-blue-500 mt-1">
+                            <label for="agree-cb" class="text-[11px] text-zinc-400 font-medium leading-tight">
+                                Я соглашаюсь с тем, что Hafland X — независимая площадка. Сервис не несет ответственности за переписки.
+                            </label>
+                        </div>
+                        ` : ''}
+
+                        <button id="auth-submit" onclick="window.processAuth()" class="w-full bg-blue-600 p-5 rounded-3xl font-black text-lg shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                            ${isRegisterMode ? 'ЗАРЕГИСТРИРОВАТЬСЯ' : 'ВОЙТИ'}
+                        </button>
+                        
+                        <button onclick="window.toggleAuth()" class="w-full text-blue-500 font-bold text-sm mt-4">
+                            ${isRegisterMode ? 'Есть аккаунт? Войти' : 'Нет аккаунта? Создать'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function launchMessenger() {
+            document.getElementById('navigation').classList.remove('hidden');
+            window.switchTab(activeTab);
+        }
+
+        window.switchTab = (tab) => {
+            activeTab = tab;
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + tab).classList.add('active');
+            
+            const scr = document.getElementById('screen');
+            if (tab === 'chats') renderChats(scr);
+            if (tab === 'contacts') renderContacts(scr);
+            if (tab === 'profile') renderProfile(scr);
+            if (tab === 'settings') renderSettings(scr);
+            refreshIcons();
+        };
+
+        function renderChats(el) {
+            el.innerHTML = `<div class="p-6 pt-10 pb-32"><h2 class="text-3xl font-black mb-6">Чаты</h2><div id="chat-items" class="space-y-2"></div></div>`;
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const list = document.getElementById('chat-items');
+                if (!list) return;
+                const lastMsgs = new Map();
+                s.docs.forEach(doc => {
+                    const d = doc.data();
+                    if (d.f === currentUser.nickname || d.t === currentUser.nickname) {
+                        const other = d.f === currentUser.nickname ? d.t : d.f;
+                        if (!lastMsgs.has(other) || lastMsgs.get(other).ts < d.ts) lastMsgs.set(other, d);
+                    }
+                });
+                
+                if (lastMsgs.size === 0) {
+                    list.innerHTML = `<div class="text-center py-20 text-zinc-600 font-bold">Чатов пока нет</div>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+                [...lastMsgs.entries()].sort((a,b) => b[1].ts - a[1].ts).forEach(([name, m]) => {
+                    list.innerHTML += `
+                        <div onclick="window.openChat('${name}')" class="flex items-center gap-4 p-4 bg-zinc-900/40 rounded-[30px] active:bg-zinc-800">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${name}" class="w-14 h-14 rounded-full bg-zinc-800">
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-bold text-lg">${name}</span>
+                                    <span class="text-[10px] text-zinc-600 font-bold">12:00</span>
+                                </div>
+                                <p class="text-zinc-500 text-sm truncate font-medium">${m.txt}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        window.openChat = (other) => {
+            document.getElementById('navigation').classList.add('hidden');
+            const scr = document.getElementById('screen');
+            scr.innerHTML = `
+                <div class="flex flex-col h-screen bg-black">
+                    <div class="p-4 flex items-center gap-4 border-b border-zinc-900 bg-black/60 backdrop-blur-xl sticky top-0 z-50">
+                        <button onclick="window.switchTab('chats')" class="p-1"><i data-lucide="chevron-left"></i></button>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${other}" class="w-10 h-10 rounded-full">
+                        <span class="font-bold text-xl">${other}</span>
+                    </div>
+                    <div id="chat-flow" class="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar pb-32"></div>
+                    <div class="p-4 bg-black/80 backdrop-blur-md border-t border-zinc-900 flex gap-2 fixed bottom-0 left-0 right-0 max-w-md mx-auto">
+                        <input id="chat-input" type="text" placeholder="Сообщение..." class="flex-1 p-4 bg-zinc-900 rounded-2xl outline-none font-medium">
+                        <button onclick="window.sendMessage('${other}')" class="bg-blue-600 p-4 rounded-2xl shadow-lg shadow-blue-600/20"><i data-lucide="send"></i></button>
+                    </div>
+                </div>
+            `;
+            refreshIcons();
+            
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const flow = document.getElementById('chat-flow');
+                if (!flow) return;
+                const msgs = s.docs.map(d => d.data())
+                    .filter(m => (m.f === currentUser.nickname && m.t === other) || (m.f === other && m.t === currentUser.nickname))
+                    .sort((a,b) => a.ts - b.ts);
+                
+                flow.innerHTML = '';
+                msgs.forEach(m => {
+                    const isMe = m.f === currentUser.nickname;
+                    flow.innerHTML += `
+                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                            <div class="chat-bubble ${isMe ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-200'}">
+                                ${m.txt}
+                            </div>
+                        </div>
+                    `;
+                });
+                flow.scrollTop = flow.scrollHeight;
+            });
+        };
+
+        window.sendMessage = async (to) => {
+            const inp = document.getElementById('chat-input');
+            const val = inp.value.trim();
+            if (!val) return;
+            inp.value = '';
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), {
+                f: currentUser.nickname, t: to, txt: val, ts: Date.now()
+            });
+        };
+
+        function renderContacts(el) {
+            el.innerHTML = `<div class="p-6 pt-10 pb-32"><h2 class="text-3xl font-black mb-6">Поиск</h2><div id="user-results" class="space-y-3"></div></div>`;
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+                const list = document.getElementById('user-results');
+                if (!list) return;
+                list.innerHTML = '';
+                s.docs.forEach(doc => {
+                    const u = doc.data();
+                    if (u.nickname === currentUser.nickname) return;
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between p-4 bg-zinc-900/50 rounded-[30px]">
+                            <div class="flex items-center gap-4">
+                                <img src="${u.avatar}" class="w-12 h-12 rounded-full">
+                                <span class="font-bold text-lg">${u.nickname}</span>
+                            </div>
+                            <button onclick="window.openChat('${u.nickname}')" class="bg-blue-600 px-6 py-2 rounded-full text-xs font-black shadow-lg">ЧАТ</button>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function renderProfile(el) {
+            el.innerHTML = `
+                <div class="p-10 flex flex-col items-center pt-20">
+                    <img src="${currentUser.avatar}" class="w-32 h-32 rounded-full border-4 border-blue-600/20 shadow-2xl mb-6">
+                    <h2 class="text-4xl font-black mb-2">${currentUser.nickname}</h2>
+                    <p class="text-zinc-500 font-bold mb-14 uppercase tracking-tighter">Hafland X Citizen</p>
+                    <button onclick="localStorage.clear(); location.reload();" class="w-full p-5 bg-red-500/10 text-red-500 font-black rounded-[30px]">ВЫЙТИ</button>
+                </div>
+            `;
+        }
+
+        function renderSettings(el) {
+            el.innerHTML = `<div class="p-6 pt-10"><h2 class="text-3xl font-black mb-6">Настройки</h2><div class="p-6 bg-zinc-900/50 rounded-[30px] text-zinc-500 font-medium">Опции безопасности будут доступны в следующем обновлении.</div></div>`;
+        }
+
+        // Авто-проверка сессии
+        onAuthStateChanged(auth, async (fbUser) => {
+            const savedNick = localStorage.getItem('hx_nick');
+            if (fbUser && savedNick) {
+                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', savedNick));
+                if (snap.exists()) {
+                    currentUser = snap.data();
+                    launchMessenger();
+                } else {
+                    renderAuthPage();
+                }
+            } else {
+                renderAuthPage();
+            }
+        });
+
+    </script>
+</body>
+</html>
+
+
