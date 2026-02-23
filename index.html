@@ -129,7 +129,7 @@
             </button>
             <button onclick="window.goTab('contacts', 1)" id="tab-contacts" class="nav-btn">
                 <i data-lucide="users"></i>
-                <span>Контакты</span>
+                <span>Поиск людей</span>
             </button>
             <button onclick="window.goTab('settings', 2)" id="tab-settings" class="nav-btn">
                 <i data-lucide="settings"></i>
@@ -180,7 +180,7 @@
             document.getElementById('screen').innerHTML = `
                 <div class="p-8 pt-20 max-w-sm mx-auto">
                     <h1 class="text-5xl font-black text-blue-600 tracking-tighter mb-2">Hafland X</h1>
-                    <p class="text-zinc-500 font-bold mb-10">Версия 2.5 Stable</p>
+                    <p class="text-zinc-500 font-bold mb-10">Версия 2.5 by Hafa Studio</p>
                     
                     <div class="space-y-4">
                         <input id="auth-nick" type="text" placeholder="Никнейм" class="auth-input">
@@ -346,7 +346,7 @@
                     }
                 });
                 
-                list.innerHTML = sessions.size === 0 ? `<p class="text-zinc-500 font-medium text-center py-20">У вас пока нет переписок</p>` : '';
+                list.innerHTML = sessions.size === 0 ? `<p class="text-zinc-500 font-medium text-center py-20">У вас пока что нет активных чатов</p>` : '';
                 [...sessions.entries()].sort((a,b) => b[1].ts - a[1].ts).forEach(([name, m]) => {
                     list.innerHTML += `
                         <div onclick="window.openPrivate('${name}')" class="flex items-center gap-4 p-4 border-b border-white/5 active:bg-white/5 transition-all">
