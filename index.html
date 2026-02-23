@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X v2.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --card-bg: rgba(23, 25, 35, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --input-bg: #11141d;
+            --item-bg: rgba(255, 255, 255, 0.03);
+            --accent: #2563eb;
+        }
+
+        .light-theme {
+            --bg-color: #f3f4f6;
+            --text-color: #111827;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --input-bg: #ffffff;
+            --item-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Дизайн инпутов из скриншота */
+        .auth-input {
+            width: 100%;
+            background-color: #11141d;
+            border: none;
+            padding: 20px 24px;
+            border-radius: 20px;
+            outline: none;
+            color: white;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        .auth-input::placeholder { color: #4b5563; }
+
+        .auth-checkbox-container {
+            background-color: #11141d;
+            padding: 18px 24px;
+            border-radius: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .blue-btn {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            padding: 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 18px;
+            text-transform: uppercase;
+            transition: opacity 0.2s;
+        }
+
+        /* Скользящая навигация */
+        .nav-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 440px;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 32px;
+            display: flex;
+            padding: 6px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+        }
+
+        .nav-indicator {
+            position: absolute;
+            height: calc(100% - 12px);
+            top: 6px;
+            background: rgba(37, 99, 235, 0.15);
+            border-radius: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+
+        .nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0;
+            color: #94a3b8;
+            border-radius: 24px;
+            transition: color 0.3s ease;
+            background: none;
+            border: none;
+            z-index: 1;
+        }
+
+        .nav-btn.active { color: var(--accent); }
+        .nav-btn i { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-btn span { font-size: 10px; font-weight: 700; }
+
+        .screen-content { 
+            height: 100vh; 
+            overflow-y: auto; 
+            padding-bottom: 120px; 
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            position: relative;
+        }
+        .msg-time { font-size: 9px; opacity: 0.5; margin-top: 4px; display: block; text-align: right; }
+
+        .online-dot { width: 10px; height: 10px; background: #22c55e; border-radius: 50%; border: 2px solid var(--bg-color); }
+
+        .switch { position: relative; display: inline-block; width: 48px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155; transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .setting-item {
+            background: var(--item-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="dark">
+
+    <div id="app-root">
+        <div id="screen" class="screen-content no-scrollbar"></div>
+
+        <div id="nav-bar" class="nav-container hidden">
+            <div id="nav-indicator" class="nav-indicator"></div>
+            <button onclick="window.goTab('chats', 0)" id="tab-chats" class="nav-btn active">
+                <i data-lucide="message-circle"></i>
+                <span>Чаты</span>
+            </button>
+            <button onclick="window.goTab('contacts', 1)" id="tab-contacts" class="nav-btn">
+                <i data-lucide="search"></i>
+                <span>Поиск</span>
+            </button>
+            <button onclick="window.goTab('settings', 2)" id="tab-settings" class="nav-btn">
+                <i data-lucide="settings"></i>
+                <span>Настройки</span>
+            </button>
+            <button onclick="window.goTab('profile', 3)" id="tab-profile" class="nav-btn">
+                <i data-lucide="circle-user"></i>
+                <span>Профиль</span>
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+            authDomain: "hafland-x-66cdc.firebaseapp.com",
+            projectId: "hafland-x-66cdc",
+            storageBucket: "hafland-x-66cdc.firebasestorage.app",
+            messagingSenderId: "1007892951941",
+            appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const APP_ID = "hx_v27_final";
+
+        let user = null;
+        let isReg = false;
+        let unsubMessages = null;
+
+        const applyTheme = (mode) => {
+            if (mode === 'light') document.body.classList.add('light-theme');
+            else document.body.classList.remove('light-theme');
+            localStorage.setItem('hx_theme', mode);
+        };
+        applyTheme(localStorage.getItem('hx_theme') || 'dark');
+
+        const showLogin = () => {
+            document.getElementById('nav-bar').classList.add('hidden');
+            const screen = document.getElementById('screen');
+            
+            if (isReg) {
+                screen.innerHTML = `
+                <div class="p-6 pt-24 max-w-md mx-auto">
+                    <h1 class="text-5xl font-extrabold text-blue-600 mb-2 italic tracking-tighter">Hafland X</h1>
+                    <p class="text-zinc-600 font-bold mb-12">Версия 1.0.0 Stable</p>
+                    
+                    <input id="auth-nick" type="text" placeholder="Никнейм" class="auth-input">
+                    <input id="auth-pass" type="password" placeholder="Пароль" class="auth-input">
+                    
+                    <div class="auth-checkbox-container">
+                        <input type="checkbox" id="agree" class="w-5 h-5 mt-1 accent-blue-600">
+                        <label for="agree" class="text-zinc-500 text-xs font-medium leading-relaxed">
+                            Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент и содержание ваших сообщений внутри платформы.
+                        </label>
+                    </div>
+
+                    <button onclick="window.doAuth()" class="blue-btn mb-6">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+                    <div class="text-center">
+                        <button onclick="window.toggleMode()" class="text-blue-500 font-bold text-sm">Уже есть аккаунт? Войти</button>
+                    </div>
+                </div>`;
+            } else {
+                screen.innerHTML = `
+                <div class="p-6 pt-24 max-w-md mx-auto">
+                    <h1 class="text-5xl font-extrabold text-blue-600 mb-2 italic tracking-tighter">Hafland X</h1>
+                    <p class="text-zinc-600 font-bold mb-12">Версия 3.0 by Hafa Studio</p>
+                    
+                    <input id="auth-nick" type="text" placeholder="Никнейм" class="auth-input">
+                    <input id="auth-pass" type="password" placeholder="Пароль" class="auth-input">
+
+                    <button onclick="window.doAuth()" class="blue-btn mb-6 mt-4">ВОЙТИ</button>
+                    <div class="text-center">
+                        <button onclick="window.toggleMode()" class="text-blue-500 font-bold text-sm">Нет аккаунта? Создать</button>
+                    </div>
+                </div>`;
+            }
+        };
+
+        window.toggleMode = () => { isReg = !isReg; showLogin(); };
+
+        window.doAuth = async () => {
+            const nick = document.getElementById('auth-nick').value.trim().toLowerCase();
+            const pass = document.getElementById('auth-pass').value;
+            if (!nick || !pass) return;
+            if (isReg && !document.getElementById('agree').checked) return;
+
+            try {
+                await signInAnonymously(auth);
+                const userRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', nick);
+                const snap = await getDoc(userRef);
+                if (isReg) {
+                    if (snap.exists()) throw new Error("Missing or insufficient permissions.");
+                    const data = { nick, pass, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${nick}`, hidden: false, bio: 'Использую Hafland X', lastSeen: Date.now() };
+                    await setDoc(userRef, data);
+                    user = data;
+                } else {
+                    if (!snap.exists() || snap.data().pass !== pass) throw new Error("Missing or insufficient permissions.");
+                    user = snap.data();
+                }
+                localStorage.setItem('hx_session', nick);
+                window.goTab('chats', 0);
+            } catch (e) {
+                alert(`Ошибка: Missing or insufficient permissions.`);
+            }
+        };
+
+        window.goTab = (tab, idx) => {
+            document.getElementById('nav-bar').classList.remove('hidden');
+            const ind = document.getElementById('nav-indicator');
+            const btn = document.getElementById('tab-' + tab);
+            
+            ind.style.width = btn.offsetWidth + 'px';
+            ind.style.left = btn.offsetLeft + 'px';
+            
+            if (unsubMessages) { unsubMessages(); unsubMessages = null; }
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderTab(tab);
+            lucide.createIcons();
+        };
+
+        const renderTab = (tab) => {
+            const scr = document.getElementById('screen');
+            if (tab === 'chats') {
+                scr.innerHTML = `<div class="p-6"><h2 class="text-3xl font-black mb-6 italic">Диалоги</h2><div id="chats-list" class="space-y-1"></div></div>`;
+                loadChats();
+            }
+            if (tab === 'contacts') {
+                scr.innerHTML = `<div class="p-6"><h2 class="text-3xl font-black mb-6 italic">Поиск</h2><div id="user-list" class="space-y-3"></div></div>`;
+                loadUsers();
+            }
+            if (tab === 'settings') {
+                const isLight = localStorage.getItem('hx_theme') === 'light';
+                scr.innerHTML = `
+                    <div class="p-6 pt-10">
+                        <h2 class="text-3xl font-black mb-8 italic">Опции</h2>
+                        <div class="space-y-4">
+                            <div class="setting-item">
+                                <div class="flex items-center gap-3"><i data-lucide="sun" class="text-blue-500"></i><span class="font-bold">Светлая тема</span></div>
+                                <label class="switch"><input type="checkbox" ${isLight ? 'checked' : ''} onchange="window.handleTheme(this.checked)"><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="flex items-center gap-3"><i data-lucide="eye-off" class="text-purple-500"></i><span class="font-bold">Инкогнито</span></div>
+                                <label class="switch"><input type="checkbox" ${user.hidden ? 'checked' : ''} onchange="window.handleIncognito(this.checked)"><span class="slider"></span></label>
+                            </div>
+                            <div class="p-4 bg-zinc-900/40 rounded-3xl border border-white/5 space-y-3">
+                                <span class="text-xs font-bold text-zinc-500 uppercase">О себе (Bio)</span>
+                                <div class="flex gap-2">
+                                    <input id="bio-input" value="${user.bio}" class="bg-black border border-white/5 p-3 rounded-xl flex-1 text-sm outline-none">
+                                    <button onclick="window.updateBio()" class="bg-blue-600 px-4 rounded-xl text-white font-bold text-xs italic">OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+            if (tab === 'profile') {
+                scr.innerHTML = `
+                    <div class="p-10 flex flex-col items-center">
+                        <div class="relative">
+                            <img src="${user.avatar}" class="w-32 h-32 rounded-full border-4 border-blue-500/10 mb-6 bg-zinc-800">
+                            <div class="absolute bottom-6 right-2 online-dot"></div>
+                        </div>
+                        <h2 class="text-4xl font-black">${user.nick}</h2>
+                        <p class="text-blue-500 font-bold text-xs mt-2 uppercase tracking-widest">${user.bio}</p>
+                        <button onclick="localStorage.clear(); location.reload();" class="w-full p-5 bg-red-500/10 text-red-500 font-black rounded-3xl mt-12 italic">ВЫЙТИ ИЗ ХАФЛАНД</button>
+                    </div>`;
+            }
+        };
+
+        window.handleTheme = (l) => applyTheme(l ? 'light' : 'dark');
+        window.handleIncognito = async (h) => {
+            user.hidden = h;
+            await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', user.nick), { hidden: h });
+        };
+        window.updateBio = async () => {
+            const bio = document.getElementById('bio-input').value;
+            user.bio = bio;
+            await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', user.nick), { bio });
+        };
+
+        const loadUsers = () => {
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+                const list = document.getElementById('user-list');
+                if (!list) return;
+                list.innerHTML = '';
+                s.docs.forEach(d => {
+                    const u = d.data();
+                    if (u.nick === user.nick || u.hidden) return;
+                    const isOnline = (Date.now() - (u.lastSeen || 0)) < 300000;
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between p-4 bg-zinc-900/40 rounded-3xl border border-white/5">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    <img src="${u.avatar}" class="w-12 h-12 rounded-full bg-zinc-800">
+                                    ${isOnline ? '<div class="absolute bottom-0 right-0 online-dot"></div>' : ''}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-lg leading-tight">${u.nick}</p>
+                                    <p class="text-[9px] text-zinc-500 uppercase font-black">${u.bio}</p>
+                                </div>
+                            </div>
+                            <button onclick="window.openChat('${u.nick}')" class="bg-blue-600 p-3 rounded-2xl text-white"><i data-lucide="send"></i></button>
+                        </div>`;
+                });
+                lucide.createIcons();
+            });
+        };
+
+        const loadChats = () => {
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const list = document.getElementById('chats-list');
+                if (!list) return;
+                const sessions = new Map();
+                s.docs.forEach(doc => {
+                    const m = doc.data();
+                    if (m.f === user.nick || m.t === user.nick) {
+                        const other = m.f === user.nick ? m.t : m.f;
+                        if (!sessions.has(other) || sessions.get(other).ts < m.ts) sessions.set(other, m);
+                    }
+                });
+                list.innerHTML = sessions.size === 0 ? `<p class="text-center text-zinc-600 py-20 font-bold italic opacity-30">Сообщений пока нет</p>` : '';
+                [...sessions.entries()].sort((a,b) => b[1].ts - a[1].ts).forEach(([name, m]) => {
+                    list.innerHTML += `
+                        <div onclick="window.openChat('${name}')" class="flex items-center gap-4 p-4 active:bg-blue-600/5 transition-all border-b border-white/5">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${name}" class="w-14 h-14 rounded-full bg-zinc-800">
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex justify-between items-center"><span class="font-bold text-lg">${name}</span><span class="text-[9px] opacity-40">${new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></div>
+                                <p class="text-zinc-500 text-sm truncate">${m.img ? '🖼 Изображение' : m.txt}</p>
+                            </div>
+                        </div>`;
+                });
+            });
+        };
+
+        window.openChat = (other) => {
+            document.getElementById('nav-bar').classList.add('hidden');
+            const scr = document.getElementById('screen');
+            scr.innerHTML = `
+                <div class="flex flex-col h-screen">
+                    <div class="p-4 flex items-center justify-between border-b border-white/5 sticky top-0 bg-black/80 backdrop-blur-md z-50">
+                        <div class="flex items-center gap-4">
+                            <button onclick="window.goTab('chats', 0)" class="p-2"><i data-lucide="arrow-left"></i></button>
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${other}" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="font-bold text-xl">${other}</p>
+                                <p id="typing-indicator" class="text-[10px] text-blue-500 font-bold opacity-0 transition-opacity">печатает...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-28"></div>
+                    <div class="p-4 fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-black/80 backdrop-blur-xl border-t border-white/5">
+                        <div class="flex gap-2">
+                            <button onclick="window.sendImage('${other}')" class="p-4 bg-zinc-900 rounded-2xl text-zinc-400"><i data-lucide="image"></i></button>
+                            <input id="msg-input" oninput="window.handleTyping('${other}')" type="text" placeholder="Сообщение..." class="flex-1 p-4 bg-zinc-900 rounded-2xl outline-none text-white border border-white/5">
+                            <button onclick="window.send('${other}')" class="bg-blue-600 p-4 rounded-2xl text-white"><i data-lucide="send-horizonal"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            lucide.createIcons();
+            
+            unsubMessages = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+                const flow = document.getElementById('flow');
+                if (!flow) return;
+                const msgs = s.docs.map(d => ({id:d.id, ...d.data()}))
+                    .filter(m => (m.f===user.nick && m.t===other) || (m.f===other && m.t===user.nick))
+                    .sort((a,b) => a.ts - b.ts);
+                flow.innerHTML = '';
+                msgs.forEach(m => {
+                    const isMe = m.f === user.nick;
+                    const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                    flow.innerHTML += `
+                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                            <div onclick="window.react('${m.id}')" class="chat-bubble ${isMe ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-300'}">
+                                ${m.img ? `<img src="${m.img}" class="rounded-lg mb-2 max-w-full">` : ''}
+                                <p>${m.txt || ''}</p>
+                                <span class="msg-time">${time} ${m.react ? ' • '+m.react : ''}</span>
+                            </div>
+                        </div>`;
+                });
+                flow.scrollTop = flow.scrollHeight;
+            });
+
+            onSnapshot(doc(db, 'artifacts', APP_ID, 'public', 'data', 'typing', other), (d) => {
+                const indicator = document.getElementById('typing-indicator');
+                if (indicator && d.exists() && d.data().who === other) {
+                    indicator.style.opacity = '1';
+                    setTimeout(() => { if(indicator) indicator.style.opacity = '0'; }, 2000);
+                }
+            });
+        };
+
+        window.handleTyping = async (to) => {
+            await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'typing', user.nick), { who: user.nick, ts: Date.now() });
+        };
+
+        window.send = async (to) => {
+            const inp = document.getElementById('msg-input');
+            const v = inp.value.trim();
+            if (!v) return;
+            inp.value = '';
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: user.nick, t: to, txt: v, ts: Date.now() });
+        };
+
+        window.sendImage = async (to) => {
+            const url = prompt("Ссылка на изображение:");
+            if (!url) return;
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: user.nick, t: to, img: url, ts: Date.now() });
+        };
+
+        window.react = async (mid) => {
+            const r = prompt("Реакция (❤️, 🔥, 👍):");
+            if (!r) return;
+            await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'messages', mid), { react: r });
+        };
+
+        onAuthStateChanged(auth, async (fbUser) => {
+            const saved = localStorage.getItem('hx_session');
+            if (fbUser && saved) {
+                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', saved));
+                if (snap.exists()) {
+                    user = snap.data();
+                    setInterval(() => updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', user.nick), { lastSeen: Date.now() }), 60000);
+                    window.goTab('chats', 0);
+                    return;
+                }
+            }
+            showLogin();
+        });
+    </script>
+</body>
+</html>
+
+
