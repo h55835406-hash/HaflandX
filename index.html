@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Dark Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS переменные для цветовой палитры */
+        :root {
+            --bg-main: #18222d; /* Основной фон */
+            --bg-secondary: #232e3c; /* Фон элементов (поиск, архив) */
+            --text-primary: #ffffff; /* Основной текст */
+            --text-secondary: #7f91a4; /* Вторичный текст */
+            --accent-blue: #3390ec; /* Акцентный синий */
+            --nav-bg: rgba(28, 42, 56, 0.85); /* Полупрозрачный фон навигации */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            /* Предотвращение случайного выделения текста на мобильных */
+            -webkit-user-select: none;
+            user-select: none;
+            /* Убираем стандартный тап-хайлайт на мобильных */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Базовые стили для плавности */
+        .interactive-element {
+            transition: transform 0.1s ease-in-out, background-color 0.2s ease;
+        }
+
+        /* Эффект нажатия */
+        .interactive-element:active {
+            transform: scale(0.98);
+        }
+
+        /* Стилизация скроллбара (для десктопа) */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-secondary);
+            border-radius: 3px;
+        }
+
+        /* Анимация появления контента */
+        .content-fade-in {
+            animation: slideUpFade 0.4s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        @keyframes slideUpFade {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- Стили для кастомной нижней навигации --- */
+        .bottom-nav-container {
+            position: fixed;
+            bottom: 24px; /* Отступ снизу */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%; /* Ширина относительно экрана */
+            max-width: 400px; /* Максимальная ширина */
+            background-color: var(--nav-bg);
+            /* Эффект размытия фона (стекло) */
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 24px; /* Сильное закругление */
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            z-index: 50;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 70px;
+        }
+
+        /* Стили для активного пункта навигации */
+        .nav-item.active {
+            color: var(--accent-blue);
+            background-color: rgba(51, 144, 236, 0.15); /* Полупрозрачный синий фон */
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+            transition: transform 0.2s ease;
+        }
+        
+        /* Небольшая анимация иконки при активации */
+        .nav-item.active .nav-icon {
+            transform: translateY(-2px);
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+    <header class="flex justify-between items-center p-4 pt-6 bg-[var(--bg-main)] z-10">
+        <h1 class="text-2xl font-bold tracking-wide pl-2">Telegram</h1>
+        <button class="interactive-element p-2 rounded-full hover:bg-[var(--bg-secondary)]">
+            <ion-icon name="ellipsis-vertical" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
+        </button>
+    </header>
+
+    <main class="flex-1 overflow-y-auto pb-32 content-fade-in">
+        
+        <div class="px-4 mb-4">
+            <div class="flex items-center bg-[var(--bg-secondary)] rounded-2xl py-2.5 px-4">
+                <ion-icon name="search" class="text-xl text-[var(--text-secondary)] mr-3"></ion-icon>
+                <input type="text" placeholder="Поиск чатов" class="bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-secondary)] w-full font-medium">
+            </div>
+        </div>
+
+        <div class="px-4 mb-4 flex space-x-2 overflow-x-auto no-scrollbar">
+            <button class="interactive-element bg-[var(--bg-secondary)] text-[var(--accent-blue)] py-2 px-5 rounded-full font-semibold text-sm whitespace-nowrap">
+                Все чаты
+            </button>
+            </div>
+
+        <div class="px-2">
+            <div class="interactive-element flex items-center p-3 rounded-2xl hover:bg-[var(--bg-secondary)] cursor-pointer mb-1">
+                <div class="w-14 h-14 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mr-4">
+                   <ion-icon name="archive" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
+                </div>
+                <div class="flex-1 border-b border-gray-800/30 pb-3 pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="font-semibold text-lg">Архив</h3>
+                    </div>
+                    <p class="text-[var(--text-secondary)] text-sm truncate">Скрытые чаты</p>
+                </div>
+            </div>
+
+            <div class="interactive-element flex items-center p-3 rounded-2xl hover:bg-[var(--bg-secondary)] cursor-pointer">
+                <div class="w-14 h-14 bg-gradient-to-tr from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-4 overflow-hidden">
+                    <ion-icon name="person" class="text-3xl text-white opacity-80"></ion-icon>
+                </div>
+                <div class="flex-1 border-b border-gray-800/30 pb-3 pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="font-semibold text-lg">[Ник пользователя]</h3>
+                        <span class="text-[var(--text-secondary)] text-xs">14:30</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                         <p class="text-[var(--text-secondary)] text-sm truncate pr-4">Привет! Как дела? Давно не виделись.</p>
+                         <div class="bg-[var(--accent-blue)] text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                             3
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="interactive-element flex items-center p-3 rounded-2xl hover:bg-[var(--bg-secondary)] cursor-pointer">
+                <div class="w-14 h-14 bg-gradient-to-tr from-green-400 to-teal-500 rounded-full flex items-center justify-center mr-4 overflow-hidden">
+                    <ion-icon name="person" class="text-3xl text-white opacity-80"></ion-icon>
+                </div>
+                <div class="flex-1 border-b border-gray-800/30 pb-3 pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="font-semibold text-lg">[ник пользователя]</h3>
+                        <span class="text-[var(--text-secondary)] text-xs">Вчера</span>
+                    </div>
+                     <div class="flex justify-between items-center">
+                        <p class="text-[var(--text-secondary)] text-sm truncate pr-4">Изображение</p>
+                    </div>
+                </div>
+            </div>
+
+             <div class="interactive-element flex items-center p-3 rounded-2xl hover:bg-[var(--bg-secondary)] cursor-pointer">
+                <div class="w-14 h-14 bg-gradient-to-tr from-orange-400 to-red-500 rounded-full flex items-center justify-center mr-4 overflow-hidden">
+                     <span class="text-xl font-bold text-white">Д</span>
+                </div>
+                <div class="flex-1 border-b border-gray-800/30 pb-3 pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="font-semibold text-lg">Дизайнеры Кудрово</h3>
+                        <span class="text-[var(--text-secondary)] text-xs">Вт</span>
+                    </div>
+                     <div class="flex justify-between items-center">
+                        <p class="text-[var(--text-secondary)] text-sm truncate pr-4"><span class="text-[var(--accent-blue)]">Алексей:</span> Скиньте макет</p>
+                        <div class="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                             59
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <div class="h-24"></div>
+        </div>
+    </main>
+
+    <button class="interactive-element fixed right-5 bottom-28 w-14 h-14 bg-[var(--accent-blue)] rounded-full flex items-center justify-center shadow-lg z-40 hover:brightness-110">
+        <ion-icon name="pencil" class="text-2xl text-white pl-0.5 pb-0.5"></ion-icon>
+    </button>
+
+    <nav class="bottom-nav-container">
+        <div class="nav-item active cursor-pointer interactive-element">
+            <ion-icon name="chatbubble" class="nav-icon"></ion-icon>
+            <span class="nav-label">Чаты</span>
+        </div>
+        
+        <div class="nav-item cursor-pointer interactive-element">
+            <ion-icon name="people-outline" class="nav-icon"></ion-icon>
+            <span class="nav-label">Контакты</span>
+        </div>
+        
+        <div class="nav-item cursor-pointer interactive-element">
+            <ion-icon name="settings-outline" class="nav-icon"></ion-icon>
+            <span class="nav-label">Настройки</span>
+        </div>
+        
+        <div class="nav-item cursor-pointer interactive-element">
+             <ion-icon name="person-circle-outline" class="nav-icon" style="font-size: 24px;"></ion-icon>
+            <span class="nav-label">Профиль</span>
+        </div>
+    </nav>
+
+    <script>
+        const navItems = document.querySelectorAll('.nav-item');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // Убираем активный класс у всех
+                navItems.forEach(nav => {
+                    nav.classList.remove('active');
+                    // Меняем иконку на outline (неактивную)
+                    const icon = nav.querySelector('ion-icon');
+                    const iconName = icon.getAttribute('name');
+                    if (iconName && !iconName.includes('-outline') && iconName !== 'chatbubble') {
+                         icon.setAttribute('name', iconName + '-outline');
+                    } else if (iconName === 'chatbubble') {
+                         icon.setAttribute('name', 'chatbubble-outline');
+                    }
+
+                });
+                
+                // Добавляем активный класс нажатому
+                item.classList.add('active');
+                // Меняем иконку на filled (активную)
+                const icon = item.querySelector('ion-icon');
+                const iconName = icon.getAttribute('name');
+                 if (iconName && iconName.includes('-outline')) {
+                    icon.setAttribute('name', iconName.replace('-outline', ''));
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
+
