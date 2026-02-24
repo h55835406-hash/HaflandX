@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hafland X</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #09090b;
+            --bg-secondary: #18181b;
+            --panel: rgba(24, 24, 27, 0.7);
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: rgba(255, 255, 255, 0.08);
+            --bubble-me: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --bubble-them: #27272a;
+            --glass: rgba(9, 9, 11, 0.7);
+        }
+
+        .light-theme {
+            --bg: #f8fafc;
+            --bg-secondary: #ffffff;
+            --panel: rgba(255, 255, 255, 0.8);
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --accent: #0ea5e9;
+            --accent-hover: #0284c7;
+            --border: rgba(0, 0, 0, 0.06);
+            --bubble-me: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            --bubble-them: #ffffff;
+            --glass: rgba(248, 250, 252, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            transition: background-color 0.4s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow: hidden;
+            height: 100dvh;
+        }
+
+        .glass-panel { background: var(--panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border); }
+        .auth-input { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); padding: 18px 20px; border-radius: 20px; outline: none; color: var(--text); font-size: 16px; transition: all 0.3s ease; }
+        .blue-btn { width: 100%; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%); color: white; padding: 18px; border-radius: 20px; font-weight: 700; font-size: 16px; box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25); }
+        
+        .nav-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 420px; border-radius: 32px; display: flex; padding: 6px; z-index: 1000; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0; color: var(--text-muted); background: none; border: none; font-size: 11px; font-weight: 600; border-radius: 24px; }
+        .nav-btn.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+
+        .bubble { max-width: 82%; padding: 12px 16px; border-radius: 22px; font-size: 15px; position: relative; }
+        .bubble.me { background: var(--bubble-me); color: white; border-bottom-right-radius: 6px; }
+        .bubble.them { background: var(--bubble-them); color: var(--text); border-bottom-left-radius: 6px; border: 1px solid var(--border); }
+
+        /* Call Overlay Style */
+        #call-overlay {
+            position: fixed; inset: 0; background: #000; z-index: 5000;
+            display: none; flex-direction: column; align-items: center; justify-content: space-between;
+            padding: 60px 24px; color: white;
+        }
+        #local-video { position: absolute; top: 40px; right: 20px; width: 100px; height: 150px; border-radius: 12px; background: #222; object-fit: cover; z-index: 5010; transform: scaleX(-1); border: 2px solid rgba(255,255,255,0.2); }
+        #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .call-btn { width: 64px; height: 64px; border-radius: 50%; display: flex; items: center; justify-content: center; transition: transform 0.2s; }
+        .call-btn:active { transform: scale(0.9); }
+        
+        .screen-content { height: 100%; overflow-y: auto; padding-bottom: 120px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+    </style>
+</head>
+<body>
+
+<div id="app-root" class="h-full relative overflow-hidden">
+    <!-- Call Interface -->
+    <div id="call-overlay">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="local-video" autoplay playsinline muted></video>
+        
+        <div class="relative z-10 text-center">
+            <img id="call-avatar" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-white/20">
+            <h2 id="call-name" class="text-3xl font-bold mb-1">Имя</h2>
+            <p id="call-status" class="text-white/70">Вызов...</p>
+        </div>
+
+        <div class="relative z-10 flex gap-12 mb-12" id="call-controls">
+            <!-- Buttons will be injected here -->
+        </div>
+    </div>
+
+    <header id="main-header" class="h-[60px] glass-panel flex items-center justify-between px-5 hidden">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-blue-500 flex items-center justify-center text-white font-bold text-sm">H</div>
+            <span class="font-bold tracking-tight text-lg">Hafland</span>
+        </div>
+        <button type="button" onclick="window.toggleDropdown()" class="p-2 text-[var(--text-muted)]"><i data-lucide="more-horizontal"></i></button>
+        <div id="dropdown-menu" class="absolute top-[65px] right-4 glass-panel p-2 rounded-2xl min-w-[200px] hidden z-50">
+            <div class="flex justify-between items-center p-3">
+                <span class="font-medium">Светлая тема</span>
+                <label class="switch"><input type="checkbox" id="theme-toggle" onchange="window.setT(this.checked)"><span class="slider"></span></label>
+            </div>
+        </div>
+    </header>
+
+    <div id="screen" class="screen-content no-scrollbar"></div>
+
+    <nav id="nav-bar" class="nav-container glass-panel hidden">
+        <button type="button" onclick="window.goTab('chats')" id="tab-chats" class="nav-btn active"><i data-lucide="message-square"></i><span>Чаты</span></button>
+        <button type="button" onclick="window.goTab('search')" id="tab-search" class="nav-btn"><i data-lucide="users"></i><span>Контакты</span></button>
+        <button type="button" onclick="window.goTab('settings')" id="tab-settings" class="nav-btn"><i data-lucide="settings-2"></i><span>Опции</span></button>
+        <button type="button" onclick="window.goTab('profile')" id="tab-profile" class="nav-btn"><i data-lucide="user"></i><span>Я</span></button>
+    </nav>
+</div>
+
+<input type="file" id="gallery-input" accept="image/*" class="hidden" onchange="window.handleFile(this)">
+<input type="file" id="avatar-input" accept="image/*" class="hidden" onchange="window.handleAvatar(this)">
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const fbConfig = {
+        apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+        authDomain: "hafland-x-66cdc.firebaseapp.com",
+        projectId: "hafland-x-66cdc",
+        storageBucket: "hafland-x-66cdc.firebasestorage.app",
+        messagingSenderId: "1007892951941",
+        appId: "1:1007892951941:web:692984898e47747307caec"
+    };
+
+    const app = initializeApp(fbConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const APP_ID = "hx_v4_final";
+
+    let me = null;
+    let isReg = false;
+    let activeUnsub = null;
+    let currentChatOther = null;
+
+    // WebRTC Variables
+    let pc = null;
+    let localStream = null;
+    const rtcConfig = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+    // --- Core UI Logic ---
+    const applyTheme = (t) => {
+        if(t === 'light') document.body.classList.add('light-theme');
+        else document.body.classList.remove('light-theme');
+        localStorage.setItem('hx_t', t);
+    };
+    applyTheme(localStorage.getItem('hx_t') || 'dark');
+    window.setT = (l) => applyTheme(l ? 'light' : 'dark');
+    window.toggleDropdown = () => document.getElementById('dropdown-menu').classList.toggle('hidden');
+
+    // --- CALLS LOGIC ---
+    window.startCall = async (other, type = 'video') => {
+        const overlay = document.getElementById('call-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('call-name').innerText = other;
+        document.getElementById('call-status').innerText = 'Вызов...';
+        document.getElementById('call-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${other}`;
+        
+        document.getElementById('call-controls').innerHTML = `
+            <button onclick="window.hangup('${other}')" class="call-btn bg-red-500"><i data-lucide="phone-off"></i></button>
+        `;
+        lucide.createIcons();
+
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
+            document.getElementById('local-video').srcObject = localStream;
+
+            pc = new RTCPeerConnection(rtcConfig);
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', `calls_${other}_ice`), e.candidate.toJSON());
+                }
+            };
+
+            pc.ontrack = (e) => {
+                document.getElementById('remote-video').srcObject = e.streams[0];
+                document.getElementById('call-status').innerText = 'В разговоре';
+                document.getElementById('call-avatar').classList.add('hidden');
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const callData = { offer: { type: offer.type, sdp: offer.sdp }, from: me.nick, type, ts: Date.now() };
+            await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', other), callData);
+
+            // Listen for Answer
+            onSnapshot(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', other), (s) => {
+                const data = s.data();
+                if (data?.answer && !pc.currentRemoteDescription) {
+                    pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+            });
+
+            // Listen for ICE Candidates from remote
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', `calls_${me.nick}_ice`), (s) => {
+                s.docChanges().forEach(change => {
+                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                });
+            });
+
+        } catch (err) {
+            console.error(err);
+            window.hangup(other);
+        }
+    };
+
+    window.acceptCall = async (caller, offer, type) => {
+        const overlay = document.getElementById('call-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('call-status').innerText = 'Соединение...';
+        
+        document.getElementById('call-controls').innerHTML = `
+            <button onclick="window.hangup('${caller}')" class="call-btn bg-red-500"><i data-lucide="phone-off"></i></button>
+        `;
+        lucide.createIcons();
+
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
+        document.getElementById('local-video').srcObject = localStream;
+
+        pc = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', `calls_${caller}_ice`), e.candidate.toJSON());
+            }
+        };
+
+        pc.ontrack = (e) => {
+            document.getElementById('remote-video').srcObject = e.streams[0];
+            document.getElementById('call-status').innerText = 'В разговоре';
+            document.getElementById('call-avatar').classList.add('hidden');
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', me.nick), { answer: { type: answer.type, sdp: answer.sdp } });
+
+        onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', `calls_${me.nick}_ice`), (s) => {
+            s.docChanges().forEach(change => {
+                if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+            });
+        });
+    };
+
+    window.hangup = async (other) => {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (pc) pc.close();
+        document.getElementById('call-overlay').style.display = 'none';
+        document.getElementById('remote-video').srcObject = null;
+        document.getElementById('call-avatar').classList.remove('hidden');
+        
+        await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', me.nick));
+        await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', other));
+    };
+
+    // Listen for incoming calls
+    const listenCalls = () => {
+        onSnapshot(doc(db, 'artifacts', APP_ID, 'public', 'data', 'calls', me.nick), (s) => {
+            const data = s.data();
+            if (data && data.offer && !data.answer) {
+                // Incoming call UI
+                const overlay = document.getElementById('call-overlay');
+                overlay.style.display = 'flex';
+                document.getElementById('call-name').innerText = data.from;
+                document.getElementById('call-status').innerText = 'Входящий звонок...';
+                document.getElementById('call-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.from}`;
+                
+                document.getElementById('call-controls').innerHTML = `
+                    <button onclick="window.acceptCall('${data.from}', ${JSON.stringify(data.offer)}, '${data.type}')" class="call-btn bg-green-500"><i data-lucide="phone"></i></button>
+                    <button onclick="window.hangup('${data.from}')" class="call-btn bg-red-500"><i data-lucide="phone-off"></i></button>
+                `;
+                lucide.createIcons();
+            } else if (!data && document.getElementById('call-overlay').style.display === 'flex') {
+                // Call was cancelled by other side
+                window.hangup('');
+            }
+        });
+    };
+
+    // --- Rest of the App Logic (Auth, Tabs, etc) ---
+    const showLogin = () => {
+        const scr = document.getElementById('screen');
+        scr.innerHTML = `
+            <div class="px-8 pt-[15vh] max-w-md mx-auto fade-in">
+                <h1 class="text-4xl font-black mb-8">Hafland X</h1>
+                <div class="space-y-4 mb-8">
+                    <input id="auth-n" type="text" placeholder="Никнейм" class="auth-input">
+                    <input id="auth-p" type="password" placeholder="Пароль" class="auth-input">
+                </div>
+                <button onclick="window.doAuth()" class="blue-btn mb-6">${isReg?'Создать аккаунт':'Войти'}</button>
+                <center><button onclick="window.toggleM()" class="text-blue-500 font-bold">${isReg?'Назад':'Создать аккаунт'}</button></center>
+            </div>`;
+    };
+
+    window.toggleM = () => { isReg = !isReg; showLogin(); };
+    window.doAuth = async () => {
+        const n = document.getElementById('auth-n').value.trim().toLowerCase();
+        const p = document.getElementById('auth-p').value;
+        if(!n || !p) return;
+        await signInAnonymously(auth);
+        const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', n);
+        const snap = await getDoc(ref);
+        if(isReg) {
+            if(snap.exists()) return alert("Ник занят");
+            const d = { nick: n, pass: p, bio: '', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${n}`, archived: {} };
+            await setDoc(ref, d); me = d;
+        } else {
+            if(!snap.exists() || snap.data().pass !== p) return alert("Ошибка");
+            me = snap.data();
+        }
+        localStorage.setItem('hx_s', n);
+        window.goTab('chats');
+        listenCalls();
+    };
+
+    window.goTab = (t) => {
+        document.getElementById('nav-bar').classList.remove('hidden');
+        document.getElementById('main-header').classList.remove('hidden');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-'+t)?.classList.add('active');
+        render(t);
+        lucide.createIcons();
+    };
+
+    const render = (t) => {
+        const scr = document.getElementById('screen');
+        if(t === 'chats') {
+            scr.innerHTML = `<div class="p-5">
+                <h2 class="text-3xl font-black mb-6">Чаты</h2>
+                <div id="c-list" class="space-y-3"></div>
+            </div>`;
+            loadChats();
+        } else if(t === 'search') {
+            scr.innerHTML = `<div class="p-5"><h2 class="text-3xl font-black mb-6">Контакты</h2><div id="u-list" class="space-y-3"></div></div>`;
+            loadUsers();
+        } else if(t === 'profile') {
+            scr.innerHTML = `<div class="p-10 flex flex-col items-center">
+                <img src="${me.avatar}" class="w-32 h-32 rounded-3xl mb-4 object-cover">
+                <h3 class="text-2xl font-bold">${me.nick}</h3>
+                <button onclick="localStorage.clear(); location.reload()" class="mt-10 text-red-500 font-bold">Выйти</button>
+            </div>`;
+        }
+    };
+
+    const loadChats = () => {
+        onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const l = document.getElementById('c-list'); if(!l) return;
+            const ms = new Map();
+            s.docs.forEach(d => {
+                const m = d.data();
+                if(m.f === me.nick || m.t === me.nick) {
+                    const o = m.f === me.nick ? m.t : m.f;
+                    if(!ms.has(o) || ms.get(o).ts < m.ts) ms.set(o, m);
+                }
+            });
+            l.innerHTML = '';
+            [...ms.entries()].forEach(([n, m]) => {
+                l.innerHTML += `
+                    <div onclick="window.openChat('${n}')" class="flex items-center gap-4 p-4 glass-panel rounded-3xl">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${n}" class="w-12 h-12 rounded-xl">
+                        <div class="flex-1 truncate"><p class="font-bold">${n}</p><p class="text-sm opacity-60 truncate">${m.txt || 'Фотография'}</p></div>
+                    </div>`;
+            });
+        });
+    };
+
+    const loadUsers = () => {
+        onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+            const l = document.getElementById('u-list'); if(!l) return;
+            l.innerHTML = '';
+            s.docs.forEach(d => {
+                const u = d.data(); if(u.nick === me.nick) return;
+                l.innerHTML += `
+                    <div onclick="window.openChat('${u.nick}')" class="flex items-center gap-4 p-4 glass-panel rounded-3xl">
+                        <img src="${u.avatar}" class="w-12 h-12 rounded-xl">
+                        <p class="font-bold">${u.nick}</p>
+                    </div>`;
+            });
+        });
+    };
+
+    window.openChat = (other) => {
+        currentChatOther = other;
+        document.getElementById('nav-bar').classList.add('hidden');
+        document.getElementById('main-header').classList.add('hidden');
+        const scr = document.getElementById('screen');
+        scr.innerHTML = `
+            <div class="flex flex-col h-full bg-[var(--bg)]">
+                <header class="h-[70px] px-4 glass-panel flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <button onclick="window.goTab('chats')" class="p-2"><i data-lucide="arrow-left"></i></button>
+                        <p class="font-bold text-lg">${other}</p>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="window.startCall('${other}', 'audio')" class="p-3 text-blue-500"><i data-lucide="phone"></i></button>
+                        <button onclick="window.startCall('${other}', 'video')" class="p-3 text-blue-500"><i data-lucide="video"></i></button>
+                    </div>
+                </header>
+                <div id="flow" class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar"></div>
+                <div class="p-4 flex gap-2 glass-panel border-t">
+                    <input id="msg-i" type="text" placeholder="Сообщение..." class="flex-1 bg-transparent outline-none p-2">
+                    <button onclick="window.send('${other}')" class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white"><i data-lucide="send"></i></button>
+                </div>
+            </div>`;
+        lucide.createIcons();
+        onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const f = document.getElementById('flow'); if(!f) return;
+            const ms = s.docs.map(d=>d.data()).filter(m => (m.f===me.nick && m.t===other) || (m.f===other && m.t===me.nick)).sort((a,b)=>a.ts-b.ts);
+            f.innerHTML = '';
+            ms.forEach(m => {
+                const isMe = m.f === me.nick;
+                f.innerHTML += `<div class="flex ${isMe?'justify-end':'justify-start'}"><div class="bubble ${isMe?'me':'them'}">${m.txt}</div></div>`;
+            });
+            f.scrollTop = f.scrollHeight;
+        });
+    };
+
+    window.send = async (to) => {
+        const i = document.getElementById('msg-i'); if(!i.value.trim()) return;
+        const v = i.value; i.value = '';
+        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: me.nick, t: to, txt: v, ts: Date.now() });
+    };
+
+    onAuthStateChanged(auth, async (u) => {
+        const s = localStorage.getItem('hx_s');
+        if(u && s) {
+            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', s));
+            if(snap.exists()) { me = snap.data(); window.goTab('chats'); listenCalls(); return; }
+        }
+        showLogin();
+    });
+</script>
+</body>
+</html>
+
+
