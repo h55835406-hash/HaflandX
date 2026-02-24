@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hafland X</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* Premium Dark Theme */
+            --bg: #09090b;
+            --bg-secondary: #18181b;
+            --panel: rgba(24, 24, 27, 0.7);
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: rgba(255, 255, 255, 0.08);
+            --bubble-me: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --bubble-them: #27272a;
+            --glass: rgba(9, 9, 11, 0.7);
+        }
+
+        .light-theme {
+            /* Premium Light Theme */
+            --bg: #f8fafc;
+            --bg-secondary: #ffffff;
+            --panel: rgba(255, 255, 255, 0.8);
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --accent: #0ea5e9;
+            --accent-hover: #0284c7;
+            --border: rgba(0, 0, 0, 0.06);
+            --bubble-me: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            --bubble-them: #ffffff;
+            --glass: rgba(248, 250, 252, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+            height: 100dvh;
+        }
+
+        /* --- UI Elements --- */
+        .glass-panel {
+            background: var(--panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+        }
+
+        .auth-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            border-radius: 20px;
+            outline: none;
+            color: var(--text);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); }
+        
+        .blue-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
+        }
+        .blue-btn:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2); }
+
+        /* Custom Checkbox */
+        .custom-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            shrink: 0;
+            transition: all 0.2s;
+        }
+        .custom-checkbox:checked { background-color: var(--accent); border-color: var(--accent); }
+        .custom-checkbox:checked::after {
+            content: ''; position: absolute; left: 8px; top: 4px; width: 6px; height: 12px;
+            border: solid white; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+        }
+
+        /* --- Navigation (Floating Island) --- */
+        .nav-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 420px;
+            border-radius: 32px;
+            display: flex;
+            padding: 6px;
+            z-index: 1000;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px 0; color: var(--text-muted); background: none; border: none;
+            font-size: 11px; font-weight: 600; transition: all 0.3s; border-radius: 24px;
+        }
+        .nav-btn.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        .nav-btn i { width: 22px; height: 22px; margin-bottom: 4px; transition: transform 0.2s; }
+        .nav-btn.active i { transform: scale(1.1); }
+
+        /* --- Main Layout --- */
+        .app-header {
+            height: 60px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; font-size: 22px; font-weight: 700;
+            position: sticky; top: 0; z-index: 50;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* --- Chat Bubbles --- */
+        .bubble {
+            max-width: 82%; padding: 12px 16px; border-radius: 22px;
+            font-size: 15px; line-height: 1.45; word-wrap: break-word; position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .bubble.me { background: var(--bubble-me); color: white; border-bottom-right-radius: 6px; }
+        .bubble.them { background: var(--bubble-them); color: var(--text); border-bottom-left-radius: 6px; border: 1px solid var(--border); }
+
+        /* --- Switch --- */
+        .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .screen-content { height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 100px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Dropdown Menu --- */
+        .dropdown-menu {
+            position: absolute; top: 60px; right: 16px; background: var(--panel);
+            backdrop-filter: blur(20px); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid var(--border); padding: 8px; z-index: 2000; min-width: 200px;
+            transform-origin: top right; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(0.9) translateY(-10px); opacity: 0; pointer-events: none;
+        }
+        .dropdown-menu.show { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
+        .dropdown-item { padding: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 500; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+        .dropdown-item:active { background: var(--bg-secondary); }
+
+        /* --- Chat footer --- */
+        .chat-footer {
+            padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            background: var(--glass); backdrop-filter: blur(20px); border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1100;
+        }
+        
+        /* Auth Background Blobs */
+        .blob { position: absolute; filter: blur(80px); z-index: -1; opacity: 0.4; }
+        .blob-1 { top: -10%; left: -10%; width: 300px; height: 300px; background: #3b82f6; border-radius: 50%; }
+        .blob-2 { bottom: -10%; right: -10%; width: 300px; height: 300px; background: #8b5cf6; border-radius: 50%; }
+
+        /* Avatar Edit Overlay */
+        .avatar-edit { position: absolute; bottom: 0; right: 0; background: var(--accent); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-secondary); color: white; cursor: pointer; transition: transform 0.2s; }
+        .avatar-edit:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+<div id="app-root" class="h-full relative overflow-hidden">
+    <!-- Main Header -->
+    <header id="main-header" class="app-header glass-panel hidden">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">H</div>
+            <span class="tracking-tight">Hafland</span>
+        </div>
+        <button type="button" onclick="window.toggleDropdown()" class="p-2 text-[var(--text-muted)] rounded-full active:bg-[var(--border)] transition-colors">
+            <i data-lucide="more-horizontal"></i>
+        </button>
+        <!-- Dropdown menu -->
+        <div id="dropdown-menu" class="dropdown-menu">
+            <div class="dropdown-item">
+                <span>Светлая тема</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle" onchange="window.setT(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Content Area -->
+    <div id="screen" class="screen-content no-scrollbar"></div>
+
+    <!-- Bottom Navigation -->
+    <nav id="nav-bar" class="nav-container glass-panel hidden">
+        <button type="button" onclick="window.goTab('chats')" id="tab-chats" class="nav-btn active">
+            <i data-lucide="message-square"></i><span>Чаты</span>
+        </button>
+        <button type="button" onclick="window.goTab('search')" id="tab-search" class="nav-btn">
+            <i data-lucide="users"></i><span>Контакты</span>
+        </button>
+        <button type="button" onclick="window.goTab('settings')" id="tab-settings" class="nav-btn">
+            <i data-lucide="settings-2"></i><span>Настройки</span>
+        </button>
+        <button type="button" onclick="window.goTab('profile')" id="tab-profile" class="nav-btn">
+            <i data-lucide="user"></i><span>Профиль</span>
+        </button>
+    </nav>
+</div>
+
+<!-- Hidden inputs for files -->
+<input type="file" id="gallery-input" accept="image/*" class="hidden" onchange="window.handleFile(this)">
+<input type="file" id="avatar-input" accept="image/*" class="hidden" onchange="window.handleAvatar(this)">
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const fbConfig = {
+        apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+        authDomain: "hafland-x-66cdc.firebaseapp.com",
+        projectId: "hafland-x-66cdc",
+        storageBucket: "hafland-x-66cdc.firebasestorage.app",
+        messagingSenderId: "1007892951941",
+        appId: "1:1007892951941:web:692984898e47747307caec"
+    };
+
+    const app = initializeApp(fbConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const APP_ID = "hx_v4_final";
+
+    let me = null;
+    let isReg = false;
+    let activeUnsub = null;
+    let currentChatOther = null;
+    let isTabActive = true;
+
+    window.onfocus = () => { isTabActive = true; };
+    window.onblur = () => { isTabActive = false; window.closeDropdown(); };
+
+    // Theme logic
+    const applyTheme = (t) => {
+        if(t === 'light') {
+            document.body.classList.add('light-theme');
+            const toggle = document.getElementById('theme-toggle'); if(toggle) toggle.checked = true;
+        } else {
+            document.body.classList.remove('light-theme');
+            const toggle = document.getElementById('theme-toggle'); if(toggle) toggle.checked = false;
+        }
+        localStorage.setItem('hx_t', t);
+    };
+    applyTheme(localStorage.getItem('hx_t') || 'dark');
+    window.setT = (l) => applyTheme(l ? 'light' : 'dark');
+
+    // Dropdown
+    window.toggleDropdown = () => document.getElementById('dropdown-menu').classList.toggle('show');
+    window.closeDropdown = () => { const d = document.getElementById('dropdown-menu'); if(d) d.classList.remove('show'); };
+    document.addEventListener('click', (e) => { if(!e.target.closest('header')) window.closeDropdown(); });
+
+    // Auth Screen (Mega Design)
+    const showLogin = () => {
+        document.getElementById('nav-bar').classList.add('hidden');
+        document.getElementById('main-header').classList.add('hidden');
+        const scr = document.getElementById('screen');
+        scr.innerHTML = `
+            <div class="blob blob-1"></div><div class="blob blob-2"></div>
+            <div class="px-6 pt-[15vh] max-w-md mx-auto flex flex-col items-center text-center fade-in h-full relative z-10">
+                <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-blue-500/40 mb-6">H</div>
+                <h1 class="text-4xl font-black mb-3 tracking-tight">Hafland X</h1>
+                <p class="text-[var(--text-muted)] font-medium text-[15px] mb-12">Премиальное общение. Без границ.</p>
+                
+                <div class="w-full space-y-4 mb-8">
+                    <input id="auth-n" type="text" placeholder="Никнейм" class="auth-input">
+                    <input id="auth-p" type="password" placeholder="Пароль" class="auth-input">
+                </div>
+                
+                ${isReg ? `
+                <div class="w-full bg-[var(--bg-secondary)] p-5 rounded-2xl flex items-start gap-4 mb-8 border border-[var(--border)] shadow-sm text-left">
+                    <input type="checkbox" id="agree" class="custom-checkbox">
+                    <label for="agree" class="text-[13px] text-[var(--text-muted)] font-medium leading-relaxed cursor-pointer">
+                        Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент ваших сообщений.
+                    </label>
+                </div>` : ''}
+                
+                <button type="button" onclick="window.doAuth()" class="blue-btn mb-6">
+                    ${isReg ? 'Создать аккаунт' : 'Войти'}
+                </button>
+                <button type="button" onclick="window.toggleM()" class="text-[var(--accent)] font-semibold text-[15px] p-2 hover:opacity-80 transition-opacity">
+                    ${isReg ? 'Уже есть аккаунт? Войти' : 'Создать новый аккаунт'}
+                </button>
+            </div>`;
+    };
+
+    window.toggleM = () => { isReg = !isReg; showLogin(); };
+
+    window.doAuth = async () => {
+        const n = document.getElementById('auth-n').value.trim().toLowerCase();
+        const p = document.getElementById('auth-p').value;
+        if(!n || !p) return;
+        
+        if(isReg) {
+            const agree = document.getElementById('agree');
+            if(!agree.checked) { alert("Необходимо согласиться с правилами"); return; }
+        }
+
+        try {
+            await signInAnonymously(auth);
+            const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', n);
+            const snap = await getDoc(ref);
+            if(isReg) {
+                if(snap.exists()) throw "busy";
+                // Добавили поле archived
+                const d = { nick: n, pass: p, bio: '', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${n}`, hidden: false, archived: {}, ts: Date.now() };
+                await setDoc(ref, d); me = d;
+            } else {
+                if(!snap.exists() || snap.data().pass !== p) throw "err";
+                me = snap.data();
+                if(!me.archived) me.archived = {}; // совместимость
+            }
+            localStorage.setItem('hx_s', n);
+            window.goTab('chats');
+        } catch(e) { 
+            alert(e === "busy" ? "Никнейм занят" : "Ошибка авторизации или неверный пароль"); 
+        }
+    };
+
+    // Navigation
+    window.goTab = (t) => {
+        currentChatOther = null;
+        document.getElementById('nav-bar').classList.remove('hidden');
+        document.getElementById('main-header').classList.remove('hidden');
+        
+        if(activeUnsub) activeUnsub();
+        
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('tab-'+t);
+        if(btn) btn.classList.add('active');
+        
+        render(t);
+        lucide.createIcons();
+    };
+
+    const render = (t) => {
+        const scr = document.getElementById('screen');
+        
+        if(t === 'chats') {
+            scr.innerHTML = `
+                <div class="fade-in pt-4 px-4 h-full relative">
+                    <h2 class="text-3xl font-black mb-6 tracking-tight">Чаты</h2>
+                    <div id="c-archived-list" class="mb-2"></div>
+                    <div id="c-list" class="space-y-2 pb-24"></div>
+                </div>`;
+            loadChats();
+        } 
+        else if(t === 'archived') {
+            scr.innerHTML = `
+                <div class="fade-in pt-4 px-4 h-full relative">
+                    <div class="flex items-center gap-3 mb-6">
+                        <button type="button" onclick="window.goTab('chats')" class="p-2 -ml-2 bg-[var(--bg-secondary)] rounded-full text-[var(--text)] active:scale-95 transition-transform"><i data-lucide="chevron-left"></i></button>
+                        <h2 class="text-3xl font-black tracking-tight">Архив</h2>
+                    </div>
+                    <div id="c-list-archived" class="space-y-2 pb-24"></div>
+                </div>`;
+            loadChats(true);
+        }
+        else if(t === 'search') {
+            scr.innerHTML = `
+                <div class="fade-in pt-4 px-4">
+                    <h2 class="text-3xl font-black mb-6 tracking-tight">Контакты</h2>
+                    <div class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl flex items-center px-4 py-3 mb-6 shadow-sm">
+                        <i data-lucide="search" class="text-[var(--text-muted)] w-5 h-5 mr-3"></i>
+                        <input type="text" placeholder="Поиск людей..." class="bg-transparent border-none outline-none w-full text-[16px] text-[var(--text)] font-medium" disabled>
+                    </div>
+                    <div id="u-list" class="space-y-2 pb-24"></div>
+                </div>`;
+            loadUsers();
+        } 
+        else if(t === 'settings') {
+            scr.innerHTML = `
+                <div class="fade-in pt-4 px-4 space-y-4 pb-24">
+                    <h2 class="text-3xl font-black mb-6 tracking-tight">Настройки</h2>
+                    <div class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-5 shadow-sm space-y-6">
+                        <div class="flex justify-between items-center">
+                            <div><p class="font-bold text-[16px]">Режим Инкогнито</p><p class="text-[12px] text-[var(--text-muted)] mt-1">Скрыть из поиска контактов</p></div>
+                            <label class="switch"><input type="checkbox" ${me.hidden?'checked':''} onchange="window.setH(this.checked)"><span class="slider"></span></label>
+                        </div>
+                        <div class="h-[1px] bg-[var(--border)] w-full"></div>
+                        <div>
+                            <p class="font-bold text-[14px] text-[var(--accent)] mb-3">О СЕБЕ</p>
+                            <div class="flex gap-3 items-center bg-[var(--bg)] p-3 rounded-2xl border border-[var(--border)] focus-within:border-[var(--accent)] transition-colors">
+                                <input id="bio-i" value="${me.bio}" placeholder="Расскажите о себе" class="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--text)]">
+                                <button type="button" onclick="window.saveBio()" class="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center active:scale-95"><i data-lucide="check" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        } 
+        else if(t === 'profile') {
+            scr.innerHTML = `
+                <div class="fade-in pt-10 px-6 flex flex-col items-center pb-24">
+                    <div class="relative mb-6">
+                        <img id="profile-avatar" src="${me.avatar}" class="w-32 h-32 rounded-[2rem] bg-[var(--bg-secondary)] object-cover shadow-2xl border border-[var(--border)]">
+                        <div class="avatar-edit shadow-lg" onclick="document.getElementById('avatar-input').click()">
+                            <i data-lucide="camera" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-3xl font-black mb-1 tracking-tight">${me.nick}</h3>
+                    <p class="text-[var(--text-muted)] text-[15px] font-medium px-6 text-center">${me.bio || 'Привет, я использую Hafland X'}</p>
+                    
+                    <button type="button" onclick="localStorage.clear(); location.reload();" class="mt-12 bg-red-500/10 text-red-500 font-bold py-4 px-8 rounded-2xl active:bg-red-500/20 transition-colors">
+                        Выйти из аккаунта
+                    </button>
+                </div>`;
+        }
+    };
+
+    window.saveBio = async () => {
+        const b = document.getElementById('bio-i').value; me.bio = b;
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { bio: b });
+    };
+
+    window.setH = async (h) => {
+        me.hidden = h;
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { hidden: h });
+    };
+
+    // Обновление аватарки
+    window.handleAvatar = (input) => {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const b64 = e.target.result;
+            try {
+                me.avatar = b64;
+                document.getElementById('profile-avatar').src = b64;
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { avatar: b64 });
+            } catch(err) { alert("Слишком большое фото. Выберите файл поменьше."); }
+        };
+        reader.readAsDataURL(file);
+        input.value = "";
+    };
+
+    const loadUsers = () => {
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+            const l = document.getElementById('u-list'); if(!l) return;
+            l.innerHTML = '';
+            s.docs.forEach(d => {
+                const u = d.data(); if(u.nick === me.nick || u.hidden) return;
+                l.innerHTML += `
+                    <div onclick="window.openChat('${u.nick}')" class="flex items-center gap-4 p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl active:scale-[0.98] transition-all shadow-sm cursor-pointer">
+                        <img src="${u.avatar}" class="w-14 h-14 rounded-2xl bg-[var(--bg)] object-cover shadow-inner">
+                        <div class="flex-1">
+                            <p class="font-bold text-[17px] mb-0.5">${u.nick}</p>
+                            <p class="text-[var(--text-muted)] text-[13px] font-medium truncate">${u.bio || 'Нет статуса'}</p>
+                        </div>
+                    </div>`;
+            });
+            if(l.innerHTML === '') l.innerHTML = '<div class="p-6 text-center text-[var(--text-muted)] font-medium">Пока никого нет</div>';
+        });
+    };
+
+    const loadChats = (showArchiveOnly = false) => {
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const l = document.getElementById(showArchiveOnly ? 'c-list-archived' : 'c-list'); 
+            const aList = document.getElementById('c-archived-list');
+            if(!l) return;
+            
+            const ms = new Map();
+            s.docs.forEach(doc => {
+                const m = doc.data();
+                if(m.f === me.nick || m.t === me.nick) {
+                    const o = m.f === me.nick ? m.t : m.f;
+                    if(!ms.has(o) || ms.get(o).ts < m.ts) ms.set(o, m);
+                }
+            });
+
+            const archived = me.archived || {};
+            const mainArr = [];
+            const archArr = [];
+
+            [...ms.entries()].sort((a,b)=>b[1].ts - a[1].ts).forEach(([n, m]) => {
+                if(archived[n]) archArr.push([n, m]); else mainArr.push([n, m]);
+            });
+
+            // Рендер кнопки "Архив" в главном списке, если есть архивные чаты
+            if(!showArchiveOnly && aList) {
+                if(archArr.length > 0) {
+                    aList.innerHTML = `
+                        <div onclick="window.goTab('archived')" class="flex items-center gap-4 p-4 mb-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl active:scale-[0.98] transition-all shadow-sm cursor-pointer relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent"></div>
+                            <div class="w-14 h-14 rounded-2xl bg-[var(--accent)] flex items-center justify-center text-white shadow-lg"><i data-lucide="archive"></i></div>
+                            <div class="flex-1 relative z-10"><p class="font-bold text-[17px]">Архивные чаты</p><p class="text-[var(--accent)] text-[13px] font-semibold">${archArr.length} диалога</p></div>
+                            <i data-lucide="chevron-right" class="text-[var(--text-muted)] relative z-10"></i>
+                        </div>`;
+                } else { aList.innerHTML = ''; }
+            }
+
+            const targetArr = showArchiveOnly ? archArr : mainArr;
+            
+            l.innerHTML = targetArr.length === 0 ? `<div class="p-8 text-center text-[var(--text-muted)] mt-10 font-medium">${showArchiveOnly ? 'Архив пуст' : 'У вас пока нет чатов'}</div>` : '';
+            
+            targetArr.forEach(([n, m]) => {
+                const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                l.innerHTML += `
+                    <div onclick="window.openChat('${n}')" class="flex items-center gap-4 p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl active:scale-[0.98] transition-all shadow-sm cursor-pointer">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${n}" class="w-14 h-14 rounded-2xl bg-[var(--bg)] object-cover shadow-inner shrink-0">
+                        <div class="flex-1 overflow-hidden">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <span class="font-bold text-[17px] truncate pr-2">${n}</span>
+                                <span class="text-[12px] text-[var(--text-muted)] font-medium shrink-0">${time}</span>
+                            </div>
+                            <p class="text-[var(--text-muted)] text-[14px] font-medium truncate">${m.img ? '<i data-lucide="image" class="w-4 h-4 inline-block mr-1 align-text-bottom"></i> Фотография' : m.txt}</p>
+                        </div>
+                    </div>`;
+            });
+            lucide.createIcons();
+        });
+    };
+
+    // Chat Window
+    window.openChat = (other) => {
+        currentChatOther = other;
+        document.getElementById('nav-bar').classList.add('hidden');
+        document.getElementById('main-header').classList.add('hidden');
+        
+        const isArchived = (me.archived || {})[other];
+        const scr = document.getElementById('screen');
+        scr.innerHTML = `
+            <div class="flex flex-col h-full fade-in relative bg-[var(--bg)]">
+                <!-- Chat Header -->
+                <header class="h-[70px] px-2 glass-panel flex items-center justify-between shrink-0 fixed top-0 w-full z-20 border-b border-[var(--border)]">
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="window.goTab('chats')" class="p-2 text-[var(--text)] active:bg-[var(--border)] rounded-full transition-colors"><i data-lucide="arrow-left"></i></button>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${other}" class="w-11 h-11 rounded-2xl bg-[var(--bg-secondary)] object-cover shadow-sm">
+                        <div>
+                            <p class="font-bold text-[16px] leading-tight">${other}</p>
+                            <p class="text-[12px] text-[var(--text-muted)] font-medium">В сети</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.toggleArchive('${other}')" class="p-3 mr-1 rounded-xl ${isArchived ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--text-muted)] active:bg-[var(--border)]'} transition-colors" title="${isArchived?'Извлечь из архива':'В архив'}">
+                        <i data-lucide="archive"></i>
+                    </button>
+                </header>
+                
+                <!-- Chat Flow -->
+                <div id="flow" class="flex-1 overflow-y-auto px-4 py-4 pt-[90px] space-y-3 no-scrollbar pb-[100px]"></div>
+                
+                <!-- Chat Footer -->
+                <div class="chat-footer">
+                    <button type="button" onclick="document.getElementById('gallery-input').click()" class="p-3 bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-muted)] rounded-2xl shrink-0 active:scale-95 transition-transform shadow-sm">
+                        <i data-lucide="image" class="w-6 h-6"></i>
+                    </button>
+                    <input id="msg-i" type="text" placeholder="Сообщение..." class="flex-1 bg-[var(--bg-secondary)] border border-[var(--border)] text-[16px] text-[var(--text)] px-5 py-4 rounded-2xl outline-none placeholder-[var(--text-muted)] shadow-sm focus:border-[var(--accent)] transition-colors">
+                    <button type="button" onclick="window.send('${other}')" class="w-[54px] h-[54px] rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shrink-0 active:scale-90 transition-transform shadow-lg shadow-blue-500/30">
+                        <i data-lucide="send" class="w-6 h-6 ml-[-2px]"></i>
+                    </button>
+                </div>
+            </div>`;
+        lucide.createIcons();
+        
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const f = document.getElementById('flow'); if(!f) return;
+            const ms = s.docs.map(d=>d.data()).filter(m => (m.f===me.nick && m.t===other) || (m.f===other && m.t===me.nick)).sort((a,b)=>a.ts-b.ts);
+            f.innerHTML = '';
+            ms.forEach(m => {
+                const isMe = m.f === me.nick;
+                const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                f.innerHTML += `
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                        <div class="bubble ${isMe ? 'me' : 'them'}">
+                            ${m.img ? `<img src="${m.img}" class="rounded-xl mb-2 max-w-full border border-black/10">` : ''}
+                            <p class="font-medium">${m.txt || ''}</p>
+                            <span class="float-right text-[10px] opacity-70 ml-3 mt-1.5 font-bold">${time}</span>
+                            <div class="clear-both"></div>
+                        </div>
+                    </div>`;
+            });
+            f.scrollTop = f.scrollHeight;
+        });
+    };
+
+    window.toggleArchive = async (other) => {
+        if(!me.archived) me.archived = {};
+        me.archived[other] = !me.archived[other];
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { archived: me.archived });
+        window.openChat(other); // перерисовка хедера
+    };
+
+    window.handleFile = (input) => {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: me.nick, t: currentChatOther, img: e.target.result, ts: Date.now() });
+        };
+        reader.readAsDataURL(file);
+        input.value = ""; 
+    };
+
+    window.send = async (to) => {
+        const i = document.getElementById('msg-i'); if(!i || !i.value.trim()) return;
+        const v = i.value; i.value = '';
+        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: me.nick, t: to, txt: v, ts: Date.now() });
+    };
+
+    // Init App
+    onAuthStateChanged(auth, async (u) => {
+        const s = localStorage.getItem('hx_s');
+        if(u && s) {
+            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', s));
+            if(snap.exists()) { 
+                me = snap.data(); 
+                if(!me.archived) me.archived = {};
+                window.goTab('chats'); return; 
+            }
+        }
+        showLogin();
+    });
+</script>
+</body>
+</html>
+
+
+
