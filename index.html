@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hafland X</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #09090b; /* Deep Zinc 950 */
+            --bg-secondary: #18181b; /* Zinc 900 */
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --accent: #3b82f6; /* Blue Primary */
+            --accent-hover: #2563eb;
+            --border: rgba(255, 255, 255, 0.06);
+            --nav-bg: rgba(24, 24, 27, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            user-select: none;
+            overflow: hidden;
+            height: 100dvh;
+        }
+
+        /* --- Auth (Dark Style) --- */
+        .auth-container {
+            padding: 60px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+
+        .brand-title {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 4px;
+            letter-spacing: -1.5px;
+        }
+
+        .auth-version {
+            color: #3f3f46;
+            font-size: 14px;
+            margin-bottom: 48px;
+            font-weight: 600;
+        }
+
+        .input-box {
+            width: 100%;
+            max-width: 360px;
+            background: var(--bg-secondary);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--accent);
+            background: #1e1e22;
+        }
+
+        .input-box input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .terms-box {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(24, 24, 27, 0.5);
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            max-width: 360px;
+            background: var(--accent);
+            color: white;
+            padding: 18px;
+            border-radius: 18px;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+
+        /* --- Navigation Island --- */
+        .nav-island {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 400px;
+            height: 68px;
+            background: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 34px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active { color: var(--accent); }
+        .nav-item i { margin-bottom: 4px; width: 22px; height: 22px; }
+
+        /* --- Chat List --- */
+        .chat-row {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .avatar-main {
+            width: 54px;
+            height: 54px;
+            border-radius: 18px;
+            background: #27272a;
+            object-fit: cover;
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+        }
+        .bubble.me { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+        .bubble.them { background: var(--bg-secondary); color: white; border-bottom-left-radius: 4px; }
+
+        .screen { display: none; height: 100%; flex-direction: column; }
+        .screen.active { display: flex; }
+        .scrollable { flex: 1; overflow-y: auto; padding-bottom: 120px; }
+
+        #call-screen {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="h-full">
+    <!-- ЭКРАН ВХОДА -->
+    <div id="screen-auth" class="screen active">
+        <div class="auth-container">
+            <h1 class="brand-title">Hafland X</h1>
+            <p class="auth-version">CORE EDITION</p>
+            
+            <div class="input-box">
+                <input type="text" id="inp-nick" placeholder="Никнейм">
+            </div>
+            <div class="input-box">
+                <input type="password" id="inp-pass" placeholder="Пароль">
+            </div>
+
+            <div id="reg-ui" class="hidden w-full flex flex-col items-center">
+                <div class="terms-box">
+                    <input type="checkbox" id="chk-terms" class="w-5 h-5 rounded accent-blue-500">
+                    <p class="text-xs text-zinc-500">Принимаю условия независимой площадки Hafland X</p>
+                </div>
+                <button onclick="window.handleAuth(true)" class="btn-primary">СОЗДАТЬ АККАУНТ</button>
+                <button onclick="window.toggleMode(false)" class="mt-4 text-sm text-zinc-400">Уже есть аккаунт? Войти</button>
+            </div>
+
+            <div id="login-ui" class="w-full flex flex-col items-center">
+                <button onclick="window.handleAuth(false)" class="btn-primary">ВОЙТИ</button>
+                <button onclick="window.toggleMode(true)" class="mt-4 text-sm text-zinc-400">Нет аккаунта? Регистрация</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <div id="screen-main" class="screen">
+        <div class="p-6 pb-2 flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Чаты</h2>
+            <i data-lucide="edit-3" class="w-5 h-5 text-zinc-400"></i>
+        </div>
+
+        <div class="px-5 mb-4">
+            <div class="bg-zinc-900 rounded-xl p-3 flex items-center gap-3 text-zinc-500">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <span class="text-sm">Поиск...</span>
+            </div>
+        </div>
+
+        <div class="scrollable no-scrollbar" id="chat-list">
+            <!-- Чаты подгрузятся сюда -->
+        </div>
+
+        <nav class="nav-island">
+            <div onclick="window.setTab('chats')" class="nav-item active" id="t-chats">
+                <i data-lucide="message-square"></i>
+                <span>Чаты</span>
+            </div>
+            <div onclick="window.setTab('calls')" class="nav-item" id="t-calls">
+                <i data-lucide="phone"></i>
+                <span>Звонки</span>
+            </div>
+            <div onclick="window.setTab('settings')" class="nav-item" id="t-settings">
+                <i data-lucide="settings"></i>
+                <span>Настройки</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- ЭКРАН ЧАТА -->
+    <div id="screen-chat" class="screen">
+        <div class="h-16 flex items-center px-4 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md">
+            <button onclick="window.goBack()" class="p-2 -ml-2"><i data-lucide="chevron-left"></i></button>
+            <div class="flex items-center gap-3 ml-2">
+                <img id="h-avatar" src="" class="w-10 h-10 rounded-xl bg-zinc-800">
+                <div>
+                    <div class="font-bold text-sm" id="h-name">Name</div>
+                    <div class="text-[10px] text-blue-500">в сети</div>
+                </div>
+            </div>
+            <div class="ml-auto flex gap-4">
+                <button onclick="window.startCall('video')"><i data-lucide="video" class="w-5 h-5 text-zinc-300"></i></button>
+                <button onclick="window.startCall('audio')"><i data-lucide="phone" class="w-5 h-5 text-zinc-300"></i></button>
+            </div>
+        </div>
+        <div id="msg-box" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+        <div class="p-4 pb-8 flex items-center gap-3 bg-zinc-950">
+            <div class="flex-1 bg-zinc-900 rounded-2xl px-4 py-3 border border-zinc-800">
+                <input type="text" id="m-input" placeholder="Сообщение..." class="w-full bg-transparent outline-none text-sm">
+            </div>
+            <button onclick="window.send()" class="bg-blue-500 p-3 rounded-2xl text-white">
+                <i data-lucide="send" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+        authDomain: "hafland-x-66cdc.firebaseapp.com",
+        projectId: "hafland-x-66cdc",
+        storageBucket: "hafland-x-66cdc.firebasestorage.app",
+        messagingSenderId: "1007892951941",
+        appId: "1:1007892951941:web:692984898e47747307caec"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const DB_PATH = "hafland_core_v1";
+
+    let me = JSON.parse(localStorage.getItem('hx_user')) || null;
+    let peer = null;
+
+    window.toggleMode = (reg) => {
+        document.getElementById('reg-ui').classList.toggle('hidden', !reg);
+        document.getElementById('login-ui').classList.toggle('hidden', reg);
+    };
+
+    window.handleAuth = async (isReg) => {
+        const nick = document.getElementById('inp-nick').value.trim();
+        const pass = document.getElementById('inp-pass').value.trim();
+        if(!nick || !pass) return;
+        if(isReg && !document.getElementById('chk-terms').checked) return;
+
+        await signInAnonymously(auth);
+        const ref = doc(db, 'artifacts', DB_PATH, 'public', 'data', 'users', nick);
+        const snap = await getDoc(ref);
+
+        if(isReg) {
+            if(snap.exists()) return alert("Ник занят");
+            me = { nick, pass, avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${nick}` };
+            await setDoc(ref, me);
+        } else {
+            if(!snap.exists() || snap.data().pass !== pass) return alert("Ошибка входа");
+            me = snap.data();
+        }
+        localStorage.setItem('hx_user', JSON.stringify(me));
+        initApp();
+    };
+
+    function initApp() {
+        document.getElementById('screen-auth').classList.remove('active');
+        document.getElementById('screen-main').classList.add('active');
+        lucide.createIcons();
+        loadUsers();
+    }
+
+    function loadUsers() {
+        onSnapshot(collection(db, 'artifacts', DB_PATH, 'public', 'data', 'users'), (s) => {
+            const list = document.getElementById('chat-list');
+            list.innerHTML = '';
+            s.forEach(d => {
+                const u = d.data();
+                if(u.nick === me.nick) return;
+                list.innerHTML += `
+                    <div class="chat-row" onclick="window.openChat('${u.nick}', '${u.avatar}')">
+                        <img src="${u.avatar}" class="avatar-main">
+                        <div class="flex-1">
+                            <div class="flex justify-between mb-1">
+                                <span class="font-bold text-sm">${u.nick}</span>
+                                <span class="text-[10px] text-zinc-500">12:00</span>
+                            </div>
+                            <div class="text-xs text-zinc-500 truncate">Нажмите, чтобы начать диалог</div>
+                        </div>
+                    </div>`;
+            });
+        });
+    }
+
+    window.openChat = (nick, av) => {
+        peer = nick;
+        document.getElementById('screen-main').classList.remove('active');
+        document.getElementById('screen-chat').classList.add('active');
+        document.getElementById('h-name').innerText = nick;
+        document.getElementById('h-avatar').src = av;
+        loadMsgs();
+    };
+
+    function loadMsgs() {
+        const q = query(collection(db, 'artifacts', DB_PATH, 'public', 'data', 'messages'), orderBy('t', 'asc'));
+        onSnapshot(q, (s) => {
+            const box = document.getElementById('msg-box');
+            box.innerHTML = '';
+            s.forEach(d => {
+                const m = d.data();
+                if((m.f === me.nick && m.t === peer) || (m.f === peer && m.t === me.nick)) {
+                    const isMe = m.f === me.nick;
+                    box.innerHTML += `
+                        <div class="flex ${isMe?'justify-end':'justify-start'}">
+                            <div class="bubble ${isMe?'me':'them'} shadow-sm">${m.v}</div>
+                        </div>`;
+                }
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    window.send = async () => {
+        const inp = document.getElementById('m-input');
+        if(!inp.value.trim()) return;
+        await addDoc(collection(db, 'artifacts', DB_PATH, 'public', 'data', 'messages'), {
+            f: me.nick, t: peer, v: inp.value, t: Date.now()
+        });
+        inp.value = '';
+    };
+
+    window.goBack = () => {
+        document.getElementById('screen-chat').classList.remove('active');
+        document.getElementById('screen-main').classList.add('active');
+    };
+
+    window.setTab = (t) => {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('t-'+t).classList.add('active');
+    };
+
+    if(me) initApp();
+    lucide.createIcons();
+</script>
+</body>
+</html>
+
