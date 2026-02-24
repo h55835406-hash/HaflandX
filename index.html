@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* Telegram Dark Theme Colors */
+            --bg: #0e1621;
+            --panel: #17212b;
+            --text: #ffffff;
+            --text-muted: #7f91a4;
+            --accent: #5288c1;
+            --nav-bg: #17212b;
+            --input-bg: #242f3d;
+            --border: #101923;
+            --bubble-me: #2b5278;
+            --bubble-them: #182533;
+        }
+
+        .light-theme {
+            /* Telegram Light Theme Colors */
+            --bg: #f1f1f1;
+            --panel: #ffffff;
+            --text: #000000;
+            --text-muted: #8c9094;
+            --accent: #3390ec;
+            --nav-bg: #ffffff;
+            --input-bg: #f1f2f6;
+            --border: #e4e4e5;
+            --bubble-me: #eeffde;
+            --bubble-them: #ffffff;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* --- UI Elements --- */
+        .auth-bg { background-color: #000000; }
+        .auth-input {
+            width: 100%;
+            background-color: #1c242f;
+            border: none;
+            padding: 18px 20px;
+            border-radius: 14px;
+            outline: none;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+        .auth-input::placeholder { color: #6b7a8c; }
+        
+        .blue-btn {
+            width: 100%;
+            background-color: #2b6ded;
+            color: white;
+            padding: 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: opacity 0.2s active;
+        }
+        .blue-btn:active { opacity: 0.8; }
+
+        /* Custom Checkbox */
+        .custom-checkbox {
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background-color: white;
+            border-radius: 4px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            shrink: 0;
+        }
+        .custom-checkbox:checked { background-color: white; }
+        .custom-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 3px;
+            width: 6px;
+            height: 12px;
+            border: solid #1c242f;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        /* --- Navigation --- */
+        .nav-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--nav-bg);
+            display: flex;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0 8px 0;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-btn.active { color: var(--accent); }
+        .nav-btn i { width: 24px; height: 24px; margin-bottom: 4px; }
+
+        /* --- Main Layout --- */
+        .app-header {
+            background-color: var(--panel);
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 20px;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* --- Chat Bubbles --- */
+        .bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .bubble.me { 
+            background: var(--bubble-me); 
+            color: var(--text); 
+            border-bottom-right-radius: 4px; 
+        }
+        .light-theme .bubble.me { color: #000; }
+        
+        .bubble.them { 
+            background: var(--bubble-them); 
+            color: var(--text); 
+            border-bottom-left-radius: 4px; 
+        }
+
+        /* --- Switch --- */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #8c9094; transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px;
+            left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .screen-content { height: calc(100vh - 56px - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .full-screen { height: 100vh; overflow-y: auto; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- Dropdown Menu --- */
+        .dropdown-menu {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: var(--panel);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            padding: 8px 0;
+            z-index: 2000;
+            min-width: 180px;
+            transform-origin: top right;
+            transition: transform 0.2s, opacity 0.2s;
+            transform: scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .dropdown-menu.show {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .dropdown-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 15px;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        /* --- Notifications --- */
+        #in-app-notify {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 96%;
+            max-width: 400px;
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 12px;
+            z-index: 3000;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+        }
+        #in-app-notify.show { top: 16px; }
+
+        /* Chat footer fix for Android */
+        .chat-footer {
+            padding: 10px 12px;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1100;
+        }
+
+        .fab {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-root">
+    <!-- Notification -->
+    <div id="in-app-notify" onclick="this.classList.remove('show')">
+        <img id="notify-img" src="" class="w-10 h-10 rounded-full bg-gray-800">
+        <div class="flex-1 overflow-hidden">
+            <p id="notify-name" class="font-bold text-sm truncate"></p>
+            <p id="notify-msg" class="text-sm text-[var(--text-muted)] truncate"></p>
+        </div>
+    </div>
+
+    <!-- Main Header (hidden in chat/login) -->
+    <header id="main-header" class="app-header hidden">
+        <div class="font-medium text-xl tracking-wide">Hafland</div>
+        <button type="button" onclick="window.toggleDropdown()" class="p-2 text-[var(--text-muted)] active:bg-[var(--bg)] rounded-full">
+            <i data-lucide="more-vertical"></i>
+        </button>
+        <!-- Dropdown menu -->
+        <div id="dropdown-menu" class="dropdown-menu">
+            <div class="dropdown-item">
+                <span>Светлая тема</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle" onchange="window.setT(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Content Area -->
+    <div id="screen" class="full-screen no-scrollbar"></div>
+
+    <!-- Bottom Navigation -->
+    <nav id="nav-bar" class="nav-container hidden">
+        <button type="button" onclick="window.goTab('chats')" id="tab-chats" class="nav-btn active">
+            <i data-lucide="message-circle"></i><span>Чаты</span>
+        </button>
+        <button type="button" onclick="window.goTab('search')" id="tab-search" class="nav-btn">
+            <i data-lucide="user-round"></i><span>Контакты</span>
+        </button>
+        <button type="button" onclick="window.goTab('settings')" id="tab-settings" class="nav-btn">
+            <i data-lucide="settings"></i><span>Настройки</span>
+        </button>
+        <button type="button" onclick="window.goTab('profile')" id="tab-profile" class="nav-btn">
+            <i data-lucide="circle-user"></i><span>Профиль</span>
+        </button>
+    </nav>
+</div>
+
+<!-- Hidden file input for images -->
+<input type="file" id="gallery-input" accept="image/*" class="hidden" onchange="window.handleFile(this)">
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const fbConfig = {
+        apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+        authDomain: "hafland-x-66cdc.firebaseapp.com",
+        projectId: "hafland-x-66cdc",
+        storageBucket: "hafland-x-66cdc.firebasestorage.app",
+        messagingSenderId: "1007892951941",
+        appId: "1:1007892951941:web:692984898e47747307caec"
+    };
+
+    const app = initializeApp(fbConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const APP_ID = "hx_v4_final";
+
+    let me = null;
+    let isReg = false;
+    let activeUnsub = null;
+    let currentChatOther = null;
+    let isTabActive = true;
+
+    // Window Focus Tracking
+    window.onfocus = () => { isTabActive = true; };
+    window.onblur = () => { isTabActive = false; window.closeDropdown(); };
+
+    // Theme logic
+    const applyTheme = (t) => {
+        if(t === 'light') {
+            document.body.classList.add('light-theme');
+            const toggle = document.getElementById('theme-toggle');
+            if(toggle) toggle.checked = true;
+        } else {
+            document.body.classList.remove('light-theme');
+            const toggle = document.getElementById('theme-toggle');
+            if(toggle) toggle.checked = false;
+        }
+        localStorage.setItem('hx_t', t);
+    };
+    applyTheme(localStorage.getItem('hx_t') || 'dark');
+    window.setT = (l) => applyTheme(l ? 'light' : 'dark');
+
+    // Dropdown menu logic
+    window.toggleDropdown = () => {
+        document.getElementById('dropdown-menu').classList.toggle('show');
+    };
+    window.closeDropdown = () => {
+        const d = document.getElementById('dropdown-menu');
+        if(d) d.classList.remove('show');
+    };
+    document.addEventListener('click', (e) => {
+        if(!e.target.closest('header')) window.closeDropdown();
+    });
+
+    // Notifications
+    const requestNotify = () => {
+        if ("Notification" in window) Notification.requestPermission();
+    };
+
+    const triggerNotification = (from, text) => {
+        if (!isTabActive && Notification.permission === "granted") {
+            new Notification(`Hafland: ${from}`, {
+                body: text,
+                icon: `https://api.dicebear.com/7.x/avataaars/svg?seed=${from}`
+            });
+        }
+        if (currentChatOther !== from) {
+            const banner = document.getElementById('in-app-notify');
+            if(banner) {
+                document.getElementById('notify-img').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${from}`;
+                document.getElementById('notify-name').innerText = from;
+                document.getElementById('notify-msg').innerText = text;
+                banner.classList.add('show');
+                setTimeout(() => banner.classList.remove('show'), 4000);
+            }
+        }
+    };
+
+    // Auth Screen
+    const showLogin = () => {
+        document.getElementById('nav-bar').classList.add('hidden');
+        document.getElementById('main-header').classList.add('hidden');
+        const scr = document.getElementById('screen');
+        scr.className = "full-screen auth-bg no-scrollbar";
+        scr.innerHTML = `
+            <div class="px-6 pt-[20vh] max-w-sm mx-auto flex flex-col items-start fade-in">
+                <h1 class="text-5xl font-bold mb-2 tracking-tight" style="color: #428cdc;">Hafland X</h1>
+                <p class="text-[#8c9094] text-[15px] mb-12">Версия 4.2 Stable</p>
+                
+                <input id="auth-n" type="text" placeholder="Никнейм" class="auth-input">
+                <input id="auth-p" type="password" placeholder="Пароль" class="auth-input mb-8">
+                
+                ${isReg ? `
+                <div class="w-full bg-[#1c242f] p-4 rounded-xl flex items-start gap-4 mb-8">
+                    <input type="checkbox" id="agree" class="custom-checkbox">
+                    <label for="agree" class="text-xs text-[#8c9094] leading-relaxed cursor-pointer">
+                        Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент и содержание ваших сообщений внутри платформы.
+                    </label>
+                </div>` : ''}
+                
+                <button type="button" onclick="window.doAuth()" class="blue-btn mb-6 shadow-lg">
+                    ${isReg ? 'Зарегистрироваться' : 'Войти'}
+                </button>
+                <div class="w-full text-center">
+                    <button type="button" onclick="window.toggleM()" class="text-[#428cdc] font-bold text-sm tracking-wide p-2">
+                        ${isReg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Создать'}
+                    </button>
+                </div>
+            </div>`;
+    };
+
+    window.toggleM = () => { isReg = !isReg; showLogin(); };
+
+    window.doAuth = async () => {
+        const n = document.getElementById('auth-n').value.trim().toLowerCase();
+        const p = document.getElementById('auth-p').value;
+        if(!n || !p) return;
+        
+        if(isReg) {
+            const agree = document.getElementById('agree');
+            if(!agree.checked) { alert("Необходимо согласиться с правилами"); return; }
+        }
+
+        try {
+            await signInAnonymously(auth);
+            const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', n);
+            const snap = await getDoc(ref);
+            if(isReg) {
+                if(snap.exists()) throw "busy";
+                const d = { nick: n, pass: p, bio: '', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${n}`, hidden: false, ts: Date.now() };
+                await setDoc(ref, d); me = d;
+            } else {
+                if(!snap.exists() || snap.data().pass !== p) throw "err";
+                me = snap.data();
+            }
+            localStorage.setItem('hx_s', n);
+            requestNotify();
+            initNotifications();
+            window.goTab('chats');
+        } catch(e) { 
+            alert(e === "busy" ? "Никнейм занят" : "Ошибка авторизации или неверный пароль"); 
+        }
+    };
+
+    const initNotifications = () => {
+        onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            s.docChanges().forEach(change => {
+                if (change.type === "added") {
+                    const m = change.doc.data();
+                    if (m.t === me.nick && m.f !== me.nick && m.ts > (Date.now() - 5000)) {
+                        triggerNotification(m.f, m.img ? "[Фотография]" : m.txt);
+                    }
+                }
+            });
+        });
+    };
+
+    // Navigation
+    window.goTab = (t) => {
+        currentChatOther = null;
+        document.getElementById('nav-bar').classList.remove('hidden');
+        document.getElementById('main-header').classList.remove('hidden');
+        
+        const scr = document.getElementById('screen');
+        scr.className = "screen-content no-scrollbar";
+
+        if(activeUnsub) activeUnsub();
+        
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('tab-'+t);
+        if(btn) btn.classList.add('active');
+        
+        render(t);
+        lucide.createIcons();
+    };
+
+    const render = (t) => {
+        const scr = document.getElementById('screen');
+        
+        if(t === 'chats') {
+            scr.innerHTML = `
+                <div class="fade-in relative h-full">
+                    <div class="px-3 pt-3 pb-1">
+                        <div class="bg-[var(--input-bg)] rounded-xl flex items-center px-3 py-2 mb-3">
+                            <i data-lucide="search" class="text-[var(--text-muted)] w-5 h-5 mr-2"></i>
+                            <input type="text" placeholder="Поиск чатов" class="bg-transparent border-none outline-none w-full text-[15px] text-[var(--text)]" disabled>
+                        </div>
+                        <div class="inline-block bg-[var(--input-bg)] rounded-full px-4 py-1.5 text-sm text-[var(--accent)] font-medium">Все чаты</div>
+                    </div>
+                    <div class="flex items-center gap-4 px-4 py-3 border-b border-[var(--border)] active:bg-[var(--input-bg)]">
+                        <div class="w-12 h-12 rounded-full bg-[var(--input-bg)] flex items-center justify-center text-[var(--text-muted)]"><i data-lucide="archive"></i></div>
+                        <div class="flex-1 font-bold text-[16px]">Архив</div>
+                    </div>
+                    <div id="c-list"></div>
+                    <button type="button" onclick="window.goTab('search')" class="fab"><i data-lucide="pencil"></i></button>
+                </div>`;
+            loadChats();
+        } 
+        else if(t === 'search') {
+            scr.innerHTML = `
+                <div class="fade-in">
+                    <div class="px-4 py-3 bg-[var(--panel)] text-[var(--text-muted)] font-medium text-sm border-b border-[var(--border)]">Все контакты</div>
+                    <div id="u-list"></div>
+                </div>`;
+            loadUsers();
+        } 
+        else if(t === 'settings') {
+            scr.innerHTML = `
+                <div class="fade-in bg-[var(--panel)] mt-2">
+                    <div class="px-4 py-3 border-b border-[var(--border)] flex justify-between items-center">
+                        <span class="text-[16px]">Режим Инкогнито</span>
+                        <label class="switch"><input type="checkbox" ${me.hidden?'checked':''} onchange="window.setH(this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="px-4 py-4 border-b border-[var(--border)]">
+                        <div class="text-[13px] text-[var(--accent)] mb-1">О себе</div>
+                        <div class="flex gap-2">
+                            <input id="bio-i" value="${me.bio}" placeholder="Напишите немного о себе" class="flex-1 bg-transparent border-none outline-none text-[16px] text-[var(--text)]">
+                            <button type="button" onclick="window.saveBio()" class="text-[var(--accent)] font-medium"><i data-lucide="check"></i></button>
+                        </div>
+                    </div>
+                    <div class="px-4 py-4 border-b border-[var(--border)] flex items-center gap-4 active:bg-[var(--input-bg)]" onclick="window.requestNotify()">
+                        <i data-lucide="bell" class="text-[var(--text-muted)]"></i>
+                        <span class="text-[16px]">Уведомления</span>
+                    </div>
+                </div>`;
+        } 
+        else if(t === 'profile') {
+            scr.innerHTML = `
+                <div class="fade-in bg-[var(--panel)] h-full">
+                    <div class="flex flex-col items-center pt-8 pb-6 border-b border-[var(--border)]">
+                        <img src="${me.avatar}" class="w-24 h-24 rounded-full mb-4 bg-[var(--input-bg)] object-cover">
+                        <h3 class="text-2xl font-medium mb-1">${me.nick}</h3>
+                        <p class="text-[var(--text-muted)] text-[15px]">${me.bio || 'Нет информации'}</p>
+                    </div>
+                    <button type="button" onclick="localStorage.clear(); location.reload();" class="w-full text-left px-4 py-4 text-[#e53935] text-[16px] font-medium active:bg-[var(--input-bg)]">
+                        Выйти из аккаунта
+                    </button>
+                </div>`;
+        }
+    };
+
+    window.saveBio = async () => {
+        const b = document.getElementById('bio-i').value; me.bio = b;
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { bio: b });
+        alert("Сохранено");
+    };
+
+    window.setH = async (h) => {
+        me.hidden = h;
+        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', me.nick), { hidden: h });
+    };
+
+    const loadUsers = () => {
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'users'), (s) => {
+            const l = document.getElementById('u-list'); if(!l) return;
+            l.innerHTML = '';
+            s.docs.forEach(d => {
+                const u = d.data(); if(u.nick === me.nick || u.hidden) return;
+                l.innerHTML += `
+                    <div onclick="window.openChat('${u.nick}')" class="flex items-center gap-3 px-4 py-2 hover:bg-[var(--input-bg)] active:bg-[var(--input-bg)] cursor-pointer">
+                        <img src="${u.avatar}" class="w-12 h-12 rounded-full bg-[var(--input-bg)]">
+                        <div class="flex-1 border-b border-[var(--border)] py-3">
+                            <p class="font-medium text-[16px]">${u.nick}</p>
+                        </div>
+                    </div>`;
+            });
+            if(l.innerHTML === '') l.innerHTML = '<div class="p-6 text-center text-[var(--text-muted)]">Нет доступных контактов</div>';
+        });
+    };
+
+    const loadChats = () => {
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const l = document.getElementById('c-list'); if(!l) return;
+            const ms = new Map();
+            s.docs.forEach(doc => {
+                const m = doc.data();
+                if(m.f === me.nick || m.t === me.nick) {
+                    const o = m.f === me.nick ? m.t : m.f;
+                    if(!ms.has(o) || ms.get(o).ts < m.ts) ms.set(o, m);
+                }
+            });
+            l.innerHTML = ms.size === 0 ? '<div class="p-8 text-center text-[var(--text-muted)] mt-10">У вас пока нет чатов</div>' : '';
+            [...ms.entries()].sort((a,b)=>b[1].ts - a[1].ts).forEach(([n, m]) => {
+                const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                l.innerHTML += `
+                    <div onclick="window.openChat('${n}')" class="flex items-center gap-3 px-4 py-2 hover:bg-[var(--input-bg)] active:bg-[var(--input-bg)] cursor-pointer">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${n}" class="w-14 h-14 rounded-full bg-[var(--input-bg)] shrink-0">
+                        <div class="flex-1 overflow-hidden border-b border-[var(--border)] py-2">
+                            <div class="flex justify-between items-baseline mb-0.5">
+                                <span class="font-bold text-[16px] truncate pr-2">${n}</span>
+                                <span class="text-[12px] text-[var(--text-muted)] shrink-0">${time}</span>
+                            </div>
+                            <p class="text-[var(--text-muted)] text-[15px] truncate">${m.img ? '🖼 Фотография' : m.txt}</p>
+                        </div>
+                    </div>`;
+            });
+        });
+    };
+
+    // Chat Window
+    window.openChat = (other) => {
+        currentChatOther = other;
+        document.getElementById('nav-bar').classList.add('hidden');
+        document.getElementById('main-header').classList.add('hidden');
+        
+        const scr = document.getElementById('screen');
+        scr.className = "full-screen bg-[var(--bg)]"; 
+        scr.innerHTML = `
+            <div class="flex flex-col h-full fade-in relative">
+                <!-- Chat Header -->
+                <header class="h-[56px] px-2 bg-[var(--panel)] flex items-center gap-3 border-b border-[var(--border)] shrink-0 fixed top-0 w-full z-10">
+                    <button type="button" onclick="window.goTab('chats')" class="p-2 text-[var(--text-muted)]"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${other}" class="w-10 h-10 rounded-full bg-[var(--input-bg)] object-cover">
+                    <div>
+                        <p class="font-medium text-[16px] leading-tight">${other}</p>
+                        <p class="text-[12px] text-[var(--text-muted)]">Был(а) недавно</p>
+                    </div>
+                </header>
+                
+                <!-- Chat Flow -->
+                <div id="flow" class="flex-1 overflow-y-auto px-4 py-4 pt-[70px] pb-[70px] space-y-2 no-scrollbar"></div>
+                
+                <!-- Chat Footer -->
+                <div class="chat-footer">
+                    <button type="button" onclick="document.getElementById('gallery-input').click()" class="p-2 text-[var(--text-muted)] rounded-full shrink-0">
+                        <i data-lucide="paperclip" class="w-6 h-6"></i>
+                    </button>
+                    <input id="msg-i" type="text" placeholder="Сообщение" class="flex-1 bg-transparent text-[16px] text-[var(--text)] outline-none border-none placeholder-[var(--text-muted)]">
+                    <button type="button" onclick="window.send('${other}')" class="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+                        <i data-lucide="send" class="w-5 h-5 ml-[-2px]"></i>
+                    </button>
+                </div>
+            </div>`;
+        lucide.createIcons();
+        
+        // Load messages
+        activeUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), (s) => {
+            const f = document.getElementById('flow'); if(!f) return;
+            const ms = s.docs.map(d=>d.data()).filter(m => (m.f===me.nick && m.t===other) || (m.f===other && m.t===me.nick)).sort((a,b)=>a.ts-b.ts);
+            f.innerHTML = '';
+            ms.forEach(m => {
+                const isMe = m.f === me.nick;
+                const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                f.innerHTML += `
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                        <div class="bubble ${isMe ? 'me' : 'them'}">
+                            ${m.img ? `<img src="${m.img}" class="rounded-lg mb-1 max-w-full">` : ''}
+                            <p>${m.txt || ''}</p>
+                            <span class="float-right text-[11px] opacity-70 ml-3 mt-1">${time}</span>
+                            <div class="clear-both"></div>
+                        </div>
+                    </div>`;
+            });
+            f.scrollTop = f.scrollHeight;
+        });
+    };
+
+    window.handleFile = (input) => {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: me.nick, t: currentChatOther, img: e.target.result, ts: Date.now() });
+        };
+        reader.readAsDataURL(file);
+        input.value = ""; 
+    };
+
+    window.send = async (to) => {
+        const i = document.getElementById('msg-i'); if(!i || !i.value.trim()) return;
+        const v = i.value; i.value = '';
+        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'messages'), { f: me.nick, t: to, txt: v, ts: Date.now() });
+    };
+
+    // Init App
+    onAuthStateChanged(auth, async (u) => {
+        const s = localStorage.getItem('hx_s');
+        if(u && s) {
+            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'users', s));
+            if(snap.exists()) { me = snap.data(); initNotifications(); window.goTab('chats'); return; }
+        }
+        showLogin();
+    });
+</script>
+</body>
+</html>
+
+
+
