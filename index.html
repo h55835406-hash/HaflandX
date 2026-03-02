@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --main: #3388FF; 
+            --bg: #0B111D; 
+            --panel: #1A2232; 
+            --input-bg: #161C28;
+            --text: #ffffff; 
+            --text-sec: #8A96A8;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; background: var(--bg); }
+        .active { display: flex; }
+        .header-brand { padding: 40px 25px 20px; }
+        .brand-title { color: var(--main); font-size: 38px; font-weight: 800; margin: 0; }
+        .brand-version { color: var(--text-sec); font-size: 16px; margin-top: 5px; opacity: 0.7; }
+        .content { padding: 0 25px; flex: 1; overflow-y: auto; }
+        input, textarea { width: 100%; padding: 20px; margin: 8px 0; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05); background: var(--input-bg); color: var(--text); outline: none; font-size: 16px; }
+        .btn { background: var(--main); color: #fff; padding: 20px; border: none; border-radius: 18px; width: 100%; font-weight: 700; font-size: 18px; text-transform: uppercase; cursor: pointer; margin-top: 15px; }
+        .rules-box { background: var(--input-bg); padding: 15px; border-radius: 15px; margin: 10px 0; display: flex; gap: 12px; align-items: flex-start; }
+        .rules-box input { width: auto; margin: 4px 0 0; }
+        .rules-text { font-size: 13px; color: var(--text-sec); line-height: 1.4; }
+        .link-btn { text-align: center; color: var(--main); margin-top: 20px; font-size: 14px; cursor: pointer; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #0E1522; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+        .nav-link { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-sec); font-size: 11px; cursor: pointer; text-decoration: none; }
+        .nav-link.active { color: var(--main); }
+        .top-bar { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .top-logo { font-size: 32px; font-weight: 800; color: var(--main); }
+        .list-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; cursor: pointer; }
+        .item-icon { width: 54px; height: 54px; border-radius: 50%; background: #1A2232; display: flex; align-items: center; justify-content: center; }
+        .msg { max-width: 75%; padding: 12px 16px; border-radius: 18px; margin-bottom: 8px; font-size: 15px; }
+        .my { align-self: flex-end; background: var(--main); border-bottom-right-radius: 4px; }
+        .other { align-self: flex-start; background: var(--panel); border-bottom-left-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="screen-login" class="screen active">
+    <div class="header-brand"><h1 class="brand-title">Hafland X</h1><div class="brand-version">Версия 1.0.0 Stable</div></div>
+    <div class="content">
+        <input type="text" id="login-n" placeholder="Никнейм">
+        <input type="password" id="login-p" placeholder="Пароль">
+        <button class="btn" onclick="login()">ВОЙТИ</button>
+        <div class="link-btn" onclick="showScreen('screen-reg')">Нет аккаунта? Создать</div>
+    </div>
+</div>
+
+<div id="screen-reg" class="screen">
+    <div class="header-brand"><h1 class="brand-title">Hafland X</h1><div class="brand-version">Версия 1.0.0 Stable</div></div>
+    <div class="content">
+        <input type="text" id="reg-n" placeholder="Никнейм">
+        <input type="password" id="reg-p" placeholder="Пароль">
+        <div class="rules-box"><input type="checkbox" id="reg-a"><div class="rules-text">Я соглашаюсь с правилами Hafland X</div></div>
+        <button class="btn" onclick="register()">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+        <div class="link-btn" onclick="showScreen('screen-login')">Уже есть аккаунт? Войти</div>
+    </div>
+</div>
+
+<div id="screen-main" class="screen">
+    <div class="top-bar"><div class="top-logo">Hafland X</div></div>
+    <div class="content" id="main-list" style="padding:0">
+        <div id="chats-render"></div>
+    </div>
+    <div class="nav-bar">
+        <div class="nav-link active" onclick="setTab('chats', this)">💬<span>Чаты</span></div>
+        <div class="nav-link" onclick="setTab('users', this)">👤<span>Контакты</span></div>
+        <div class="nav-link" onclick="setTab('profile', this)">👤<span>Профиль</span></div>
+    </div>
+</div>
+
+<div id="screen-chat" class="screen">
+    <div class="top-bar" style="border-bottom:1px solid #222"><div onclick="showScreen('screen-main')">←</div><b id="chat-target">Чат</b><div></div></div>
+    <div class="content" id="chat-msgs" style="display:flex; flex-direction:column; padding:20px"></div>
+    <div style="padding:15px; background:#0E1522; display:flex; gap:10px">
+        <input type="text" id="msg-input" placeholder="Сообщение..." style="margin:0">
+        <button onclick="send()" style="background:var(--main); border:none; width:50px; border-radius:15px">✈️</button>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+  authDomain: "hafland-x-66cdc.firebaseapp.com",
+  databaseURL: "https://hafland-x-66cdc-default-rtdb.firebaseio.com",
+  projectId: "hafland-x-66cdc",
+  storageBucket: "hafland-x-66cdc.firebasestorage.app",
+  messagingSenderId: "1007892951941",
+  appId: "1:1007892951941:web:4aeee078d8b90dac07caec"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+let me = null, activeChatId = null, unsub = null;
+
+auth.onAuthStateChanged(async u => {
+    if(u) {
+        const d = await db.collection('users').doc(u.uid).get();
+        if(d.exists) { me = d.data(); me.id = u.uid; showScreen('screen-main'); setTab('chats'); }
+        else { showScreen('screen-reg'); }
+    } else { showScreen('screen-login'); }
+});
+
+async function register() {
+    const n = document.getElementById('reg-n').value.trim(), p = document.getElementById('reg-p').value, a = document.getElementById('reg-a').checked;
+    if(!n || !p || !a) return alert("Заполни всё");
+    const r = await auth.signInAnonymously();
+    await db.collection('users').doc(r.user.uid).set({ nick: n, pass: p, last: Date.now() });
+    await db.collection('nicknames').doc(n.toLowerCase()).set({uid: r.user.uid});
+    location.reload();
+}
+
+async function login() {
+    const n = document.getElementById('login-n').value.trim(), p = document.getElementById('login-p').value;
+    const snap = await db.collection('nicknames').doc(n.toLowerCase()).get();
+    if(!snap.exists) return alert("Нет такого юзера");
+    const u = (await db.collection('users').doc(snap.data().uid).get()).data();
+    if(u.pass === p) alert("В анонимном режиме просто создайте новый или юзайте этот же браузер");
+    else alert("Пароль не тот");
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+async function setTab(t, el) {
+    if(el) { document.querySelectorAll('.nav-link').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
+    const cont = document.getElementById('chats-render');
+    cont.innerHTML = "";
+    if(t === 'users') {
+        const snap = await db.collection('users').get();
+        snap.forEach(doc => { if(doc.id !== me.id) cont.innerHTML += `<div class="list-item" onclick="openChat('${doc.id}','${doc.data().nick}')"><div class="item-icon">👤</div><div class="item-info"><b>${doc.data().nick}</b></div></div>`; });
+    }
+}
+
+function openChat(id, name) {
+    activeChatId = me.id < id ? me.id+'_'+id : id+'_'+me.id;
+    document.getElementById('chat-target').innerText = name;
+    showScreen('screen-chat');
+    unsub = db.collection('chats').doc(activeChatId).collection('m').orderBy('t').onSnapshot(s => {
+        const mDiv = document.getElementById('chat-msgs'); mDiv.innerHTML = "";
+        s.forEach(d => { const m = d.data(); mDiv.innerHTML += `<div class="msg ${m.s === me.id ? 'my' : 'other'}">${m.txt}</div>`; });
+        mDiv.scrollTop = mDiv.scrollHeight;
+    });
+}
+
+function send() {
+    const inp = document.getElementById('msg-input');
+    if(!inp.value.trim()) return;
+    db.collection('chats').doc(activeChatId).collection('m').add({ s: me.id, txt: inp.value, t: Date.now() });
+    inp.value = "";
+}
+</script>
+</body>
+</html>
+
+
