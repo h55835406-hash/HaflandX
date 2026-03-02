@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000; /* Глубокий черный как на регистрации */
+            --input-bg-color: #1A1A2A; /* Темно-синий фон ввода как на регистрации */
+            --accent-color: #3388FF; /* Ярко-голубой акцент как на регистрации */
+            --text-color: #ffffff;
+            --text-color-secondary: #aaaaaa;
+            --button-text-color: #ffffff;
+            --nav-bg-color: #000000;
+            --message-my-bg: #3388FF;
+            --message-other-bg: #1A1A2A;
+            --transition-speed: 0.3s;
+        }
+
+        /* Адаптация для темной темы */
+        body.light-theme {
+            --bg-color: #ffffff;
+            --input-bg-color: #f0f0f0;
+            --accent-color: #007BFF;
+            --text-color: #000000;
+            --text-color-secondary: #666666;
+            --button-text-color: #ffffff;
+            --nav-bg-color: #f8f8f8;
+            --message-my-bg: #007BFF;
+            --message-other-bg: #f0f0f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Общие элементы */
+        .hidden { display: none !important; }
+
+        input, textarea {
+            width: 100%;
+            background-color: var(--input-bg-color);
+            border: none;
+            color: var(--text-color);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: background-color var(--transition-speed);
+        }
+
+        input::placeholder { color: var(--text-color-secondary); }
+
+        .btn {
+            display: block;
+            width: 100%;
+            background-color: var(--accent-color);
+            color: var(--button-text-color);
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color var(--transition-speed), transform 0.1s ease;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        /* Экраны авторизации (Регистрация/Вход) */
+        .auth-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .auth-logo-text {
+            color: var(--accent-color);
+            font-size: 40px;
+            font-weight: 800;
+        }
+
+        .auth-logo-img { height: 36px; }
+
+        .auth-version {
+            color: var(--text-color-secondary);
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+
+        .auth-input-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .auth-agreement {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            color: var(--text-color);
+            font-size: 14px;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+
+        .auth-agreement input { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; }
+
+        .auth-switch {
+            margin-top: 16px;
+            color: var(--accent-color);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Главный интерфейс */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Заголовок основного интерфейса */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background-color: var(--bg-color);
+            transition: background-color var(--transition-speed);
+        }
+
+        .header-logo {
+            color: var(--accent-color);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-menu { color: var(--text-color); cursor: pointer; }
+
+        /* Область контента */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 80px; /* Для навигации */
+        }
+
+        /* Вкладки */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn var(--transition-speed) ease; }
+
+        /* Панель поиска */
+        .search-bar {
+            background-color: var(--input-bg-color);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-color-secondary);
+        }
+
+        /* Список элементов (чатов/контактов) */
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .list-item:active { background-color: rgba(255, 255, 255, 0.05); }
+
+        .avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: #ccc; /* По умолчанию */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #000;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .item-info { flex: 1; }
+        .item-name { font-weight: 600; margin-bottom: 2px; }
+        .item-status { font-size: 12px; color: var(--text-color-secondary); }
+
+        /* Плавающая кнопка (FAB) */
+        .fab {
+            position: fixed;
+            bottom: 96px; /* Выше навигации */
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: background-color var(--transition-speed);
+        }
+
+        /* Нижняя навигация */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 64px;
+            background-color: var(--nav-bg-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0 16px;
+            transition: background-color var(--transition-speed);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-color-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+            position: relative;
+        }
+
+        .nav-item.active { color: var(--accent-color); }
+
+        .nav-icon { font-size: 24px; margin-bottom: 4px; transition: transform 0.3s ease; }
+        .nav-item.active .nav-icon { transform: translateY(-2px); }
+        .nav-label { font-size: 10px; font-weight: 600; }
+
+        /* Настройки: Ползунки */
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #ffffff;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* Профиль */
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .profile-avatar-circle {
+            width: 96px;
+            height: 96px;
+            font-size: 32px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .profile-avatar-edit {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: var(--accent-color);
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+        }
+
+        .profile-streak {
+            color: #ff9900;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .streak-img { height: 18px; }
+
+        /* Экран Чата */
+        .chat-room {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform var(--transition-speed) ease;
+            z-index: 100;
+        }
+
+        .chat-room.active { transform: translateX(0); }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: var(--bg-color);
+            transition: background-color var(--transition-speed);
+        }
+
+        .chat-back { font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 16px; }
+
+        .chat-avatar-circle { width: 40px; height: 40px; font-size: 18px; }
+
+        .chat-info { flex: 1; margin-left: 12px; }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+            transition: background-color var(--transition-speed);
+        }
+
+        .message.my {
+            align-self: flex-end;
+            background-color: var(--message-my-bg);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.other {
+            align-self: flex-start;
+            background-color: var(--message-other-bg);
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-bar {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background-color: var(--bg-color);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            gap: 12px;
+            transition: background-color var(--transition-speed);
+        }
+
+        .chat-send-btn {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Анимации */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    </style>
+</head>
+<body class="dark-theme">
+
+    <div id="registration-screen" class="auth-container">
+        <div class="auth-logo">
+            <span class="auth-logo-text">Hafland X</span>
+            <img src="Picsart_26-02-27_19-28-17-781.png" class="auth-logo-img"> </div>
+        <div class="auth-version">Версия 1.0.0 Stable</div>
+        <div class="auth-input-group">
+            <input type="text" id="reg-nickname" placeholder="Никнейм">
+            <input type="password" id="reg-password" placeholder="Пароль">
+        </div>
+        <div class="auth-agreement">
+            <input type="checkbox" id="reg-agreement">
+            <label for="reg-agreement">Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент.</label>
+        </div>
+        <button class="btn" id="reg-submit">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+        <div class="auth-switch" id="switch-to-login">Уже есть аккаунт? Войти</div>
+    </div>
+
+    <div id="login-screen" class="auth-container hidden">
+        <div class="auth-logo">
+            <span class="auth-logo-text">Hafland X</span>
+            <img src="Picsart_26-02-27_19-28-17-781.png" class="auth-logo-img"> </div>
+        <div class="auth-version">Версия 1.0.0 Stable</div>
+        <div class="auth-input-group">
+            <input type="text" id="login-nickname" placeholder="Никнейм">
+            <input type="password" id="login-password" placeholder="Пароль">
+        </div>
+        <button class="btn" id="login-submit">ВОЙТИ</button>
+        <div class="auth-switch" id="switch-to-register">Нет аккаунта? Создать</div>
+    </div>
+
+    <div id="main-app" class="app-container hidden">
+        <div class="header">
+            <div class="header-logo">Hafland X</div>
+            <div class="header-menu">⋮</div>
+        </div>
+
+        <div class="content-area">
+            <div id="tab-chats" class="tab-content active">
+                <div class="search-bar">
+                    <span>🔍</span>
+                    <span>Поиск чатов</span>
+                </div>
+                <div id="chats-list">
+                    </div>
+            </div>
+
+            <div id="tab-contacts" class="tab-content">
+                <div id="contacts-list">
+                    </div>
+            </div>
+
+            <div id="tab-settings" class="tab-content">
+                <div class="setting-item">
+                    <span>Инкогнито</span>
+                    <label class="switch">
+                        <input type="checkbox" id="settings-incognito">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <span>Светлая тема</span>
+                    <label class="switch">
+                        <input type="checkbox" id="settings-theme">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <span>Имя огонька</span>
+                    <input type="text" id="settings-streak-name" placeholder="Огонек">
+                </div>
+            </div>
+
+            <div id="tab-profile" class="tab-content">
+                <div class="profile-info">
+                    <div class="avatar-circle profile-avatar-circle" id="profile-avatar">
+                        <span id="profile-initials">H</span>
+                        <div class="profile-avatar-edit">✎</div>
+                        <input type="file" id="avatar-input" accept="image/*" class="hidden">
+                    </div>
+                    <div id="profile-nickname">HaflandX</div>
+                    <div class="profile-streak" id="profile-streak-display">
+                        <img src="Picsart_26-02-28_01-13-54-413.png" class="streak-img"> <span id="streak-count">0</span>
+                    </div>
+                </div>
+                <div class="auth-input-group">
+                    <input type="text" id="new-nickname" placeholder="Новый никнейм">
+                    <input type="password" id="new-password" placeholder="Новый пароль">
+                    <textarea id="profile-description" placeholder="Описание" rows="4"></textarea>
+                </div>
+                <button class="btn" id="update-profile">СОХРАНИТЬ (раз в 7 дней)</button>
+                <button class="btn" id="logout-submit" style="margin-top: 16px; background-color: #333;">ВЫЙТИ</button>
+            </div>
+        </div>
+
+        <div class="fab" id="fab">+</div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" data-tab="chats">
+                <div class="nav-icon">💬</div>
+                <div class="nav-label">ЧАТЫ</div>
+            </div>
+            <div class="nav-item" data-tab="contacts">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">КОНТАКТЫ</div>
+            </div>
+            <div class="nav-item" data-tab="settings">
+                <div class="nav-icon">⚙</div>
+                <div class="nav-label">НАСТРОЙКИ</div>
+            </div>
+            <div class="nav-item" data-tab="profile">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">ПРОФИЛЬ</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-room" class="chat-room">
+        <div class="chat-header">
+            <div class="chat-back" id="chat-back">←</div>
+            <div class="avatar-circle chat-avatar-circle" id="chat-header-avatar">?</div>
+            <div class="chat-info">
+                <div id="chat-header-name">Собеседник</div>
+                <div id="chat-header-status">В сети</div>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages-list">
+            </div>
+        <div class="chat-input-bar">
+            <input type="text" id="chat-input" placeholder="Сообщение...">
+            <button class="chat-send-btn" id="chat-send">➤</button> </div>
+    </div>
+
+    <script>
+        // --- КОНФИГУРАЦИЯ FIREBASE (КЛЮЧИ ВКЛЮЧЕНЫ) ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+          authDomain: "hafland-x-66cdc.firebaseapp.com",
+          projectId: "hafland-x-66cdc",
+          storageBucket: "hafland-x-66cdc.firebasestorage.app",
+          messagingSenderId: "1007892951941",
+          appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+        let currentUserId = null;
+        let currentNickname = null;
+        let currentChatId = null;
+
+        // --- ДОМ ЭЛЕМЕНТЫ ---
+        // Экраны
+        const regScreen = document.getElementById('registration-screen');
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const chatRoom = document.getElementById('chat-room');
+
+        // Вкладки
+        const tabChats = document.getElementById('tab-chats');
+        const tabContacts = document.getElementById('tab-contacts');
+        const tabSettings = document.getElementById('tab-settings');
+        const tabProfile = document.getElementById('tab-profile');
+        const allTabContents = document.querySelectorAll('.tab-content');
+
+        // Списки
+        const chatsList = document.getElementById('chats-list');
+        const contactsList = document.getElementById('contacts-list');
+        const chatMessagesList = document.getElementById('chat-messages-list');
+
+        // Поля ввода
+        const chatInput = document.getElementById('chat-input');
+        const regNickname = document.getElementById('reg-nickname');
+        const regPassword = document.getElementById('reg-password');
+        const regAgreement = document.getElementById('reg-agreement');
+        const profileStreakName = document.getElementById('settings-streak-name');
+        const avatarInput = document.getElementById('avatar-input');
+        const newNickname = document.getElementById('new-nickname');
+        const newPassword = document.getElementById('new-password');
+        const profileDescription = document.getElementById('profile-description');
+
+        // Кнопки и Навигация
+        const bottomNav = document.querySelectorAll('.nav-item');
+        const fab = document.getElementById('fab');
+        const chatSendBtn = document.getElementById('chat-send');
+        const chatBackBtn = document.getElementById('chat-back');
+        const profileAvatarBtn = document.getElementById('profile-avatar');
+        const profileUpdateBtn = document.getElementById('update-profile');
+        const logoutBtn = document.getElementById('logout-submit');
+
+        // Отображение данных
+        const chatHeaderName = document.getElementById('chat-header-name');
+        const chatHeaderAvatar = document.getElementById('chat-header-avatar');
+        const profileNicknameDisplay = document.getElementById('profile-nickname');
+        const profileInitialsDisplay = document.getElementById('profile-initials');
+        const profileStreakCountDisplay = document.getElementById('streak-count');
+
+        // Переключатели настроек
+        const settingIncognito = document.getElementById('settings-incognito');
+        const settingTheme = document.getElementById('settings-theme');
+
+
+        // --- ФУНКЦИИ ИНИЦИАЛИЗАЦИИ ---
+
+        // Проверка состояния авторизации
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Пользователь вошел (анонимно)
+                currentUserId = user.uid;
+                loadUserProfile();
+                switchToMainApp();
+                loadChats();
+            } else {
+                // Пользователь не вошел
+                currentUserId = null;
+                switchToRegistration();
+                // Автоматический анонимный вход при первом посещении
+                auth.signInAnonymously().catch(e => console.error("Anonymous sign-in error:", e));
+            }
+        });
+
+
+        // --- УПРАВЛЕНИЕ ЭКРАНАМИ И ВКЛАДКАМИ ---
+
+        function showElement(el) { el.classList.remove('hidden'); }
+        function hideElement(el) { el.classList.add('hidden'); }
+
+        function switchToMainApp() {
+            hideElement(regScreen);
+            hideElement(loginScreen);
+            showElement(mainApp);
+            switchTab('chats'); // По умолчанию чаты
+        }
+
+        function switchToRegistration() {
+            hideElement(mainApp);
+            hideElement(loginScreen);
+            showElement(regScreen);
+        }
+
+        function switchToLogin() {
+            hideElement(mainApp);
+            hideElement(regScreen);
+            showElement(loginScreen);
+        }
+
+        function switchTab(tabName) {
+            // Переключение контента
+            allTabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Обновление навигации
+            bottomNav.forEach(item => {
+                if (item.dataset.tab === tabName) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // Показать/скрыть FAB
+            if (tabName === 'chats' || tabName === 'contacts') {
+                showElement(fab);
+            } else {
+                hideElement(fab);
+            }
+        }
+
+
+        // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
+
+        // Переключение Регистрация/Вход
+        document.getElementById('switch-to-login').addEventListener('click', switchToLogin);
+        document.getElementById('switch-to-register').addEventListener('click', switchToRegistration);
+
+        // Регистрация (установка ника)
+        document.getElementById('reg-submit').addEventListener('click', async () => {
+            const nickname = regNickname.value.trim();
+            const password = regPassword.value.trim();
+            const agreement = regAgreement.checked;
+
+            if (!nickname || nickname.length < 3) return alert("Никнейм должен быть не менее 3 символов.");
+            if (!password || password.length < 6) return alert("Пароль должен быть не менее 6 символов.");
+            if (!agreement) return alert("Вам необходимо согласиться с правилами.");
+
+            try {
+                // Проверка уникальности никнейма
+                const nicknameRef = db.ref('nicknames/' + nickname.toLowerCase());
+                const snapshot = await nicknameRef.once('value');
+                if (snapshot.exists()) {
+                    alert("Никнейм уже занят. Пожалуйста, выберите другой.");
+                    return;
+                }
+
+                // Обновление профиля пользователя в RTDB
+                await db.ref('users/' + currentUserId).set({
+                    nickname: nickname,
+                    nicknameLower: nickname.toLowerCase(),
+                    password: password, // ПРИМЕЧАНИЕ: Для продакшена шифровать пароль на сервере.
+                    incognito: false,
+                    streak: 0,
+                    streakName: "Огонек",
+                    lastInteraction: Date.now(),
+                    lastUpdate: Date.now(),
+                    description: "",
+                    avatar: null // Изначально нет аватара
+                });
+
+                // Регистрация никнейма
+                await nicknameRef.set(currentUserId);
+                alert("Успешная регистрация!");
+
+            } catch (e) {
+                console.error("Registration error:", e);
+                alert("Произошла ошибка при регистрации.");
+            }
+        });
+
+        // Нижняя навигация
+        bottomNav.forEach(item => {
+            item.addEventListener('click', () => switchTab(item.dataset.tab));
+        });
+
+        // FAB
+        fab.addEventListener('click', () => switchTab('contacts'));
+
+        // Чаты - Вход в чат
+        chatsList.addEventListener('click', (e) => {
+            const item = e.target.closest('.list-item');
+            if (item) {
+                const partnerId = item.dataset.partnerId;
+                openChatWith(partnerId);
+            }
+        });
+
+        // Контакты - Вход в чат
+        contactsList.addEventListener('click', (e) => {
+            const item = e.target.closest('.list-item');
+            if (item) {
+                const userId = item.dataset.userId;
+                openChatWith(userId);
+            }
+        });
+
+        // Чат - Назад
+        chatBackBtn.addEventListener('click', () => {
+            hideElement(chatRoom);
+            chatRoom.classList.remove('active');
+            // Остановка прослушивания сообщений
+            db.ref('messages/' + currentChatId).off();
+            currentChatId = null;
+        });
+
+        // Чат - Отправка
+        chatSendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Настройки - Изменение инкогнито
+        settingIncognito.addEventListener('change', (e) => {
+            db.ref('users/' + currentUserId).update({ incognito: e.target.checked });
+        });
+
+        // Настройки - Изменение темы (светлая/темная)
+        settingTheme.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+            } else {
+                document.body.classList.remove('light-theme');
+                document.body.classList.add('dark-theme');
+            }
+        });
+
+        // Настройки - Имя огонька
+        profileStreakName.addEventListener('change', (e) => {
+            db.ref('users/' + currentUserId).update({ streakName: e.target.checked ? "Огонек" : e.target.value.trim() });
+        });
+
+        // Профиль - Выбор аватара
+        profileAvatarBtn.addEventListener('click', () => avatarInput.click());
+        avatarInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (readerEvent) => {
+                    const base64Data = readerEvent.target.result;
+                    // Сохранение Base64 в RTDB (учитывайте лимиты)
+                    db.ref('users/' + currentUserId).update({ avatar: base64Data });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Профиль - Обновление
+        profileUpdateBtn.addEventListener('click', async () => {
+            // Простая проверка времени последнего обновления
+            const snapshot = await db.ref('users/' + currentUserId + '/lastUpdate').once('value');
+            const lastUpdate = snapshot.val();
+            const now = Date.now();
+            const days7 = 7 * 24 * 60 * 60 * 1000;
+
+            if (now - lastUpdate < days7) {
+                return alert("Вы можете обновлять данные только раз в 7 дней.");
+            }
+
+            const updates = {
+                lastUpdate: now,
+                description: profileDescription.value.trim()
+            };
+            await db.ref('users/' + currentUserId).update(updates);
+            alert("Данные обновлены.");
+        });
+
+        // Выход
+        logoutBtn.addEventListener('click', () => auth.signOut());
+
+
+        // --- FIREBASE ЛОГИКА ---
+
+        // Загрузка профиля пользователя
+        function loadUserProfile() {
+            db.ref('users/' + currentUserId).on('value', (snapshot) => {
+                const userData = snapshot.val();
+                if (userData && userData.nickname) {
+                    currentNickname = userData.nickname;
+                    profileNicknameDisplay.innerText = userData.nickname;
+                    const initial = userData.nickname.substring(0, 1).toUpperCase();
+                    profileInitialsDisplay.innerText = initial;
+                    profileDescription.value = userData.description || "";
+                    profileStreakCountDisplay.innerText = userData.streak || 0;
+                    settingIncognito.checked = userData.incognito || false;
+                    profileStreakName.value = userData.streakName || "Огонек";
+
+                    // Аватар
+                    if (userData.avatar) {
+                        const img = document.createElement('img');
+                        img.src = userData.avatar;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.borderRadius = '50%';
+                        profileAvatarBtn.innerHTML = '';
+                        profileAvatarBtn.appendChild(img);
+                        profileAvatarBtn.appendChild(createAvatarEditBtn()); // Добавить кнопку редактирования
+                    }
+
+                } else {
+                    // Пользователь без ника, возможно первая авторизация
+                    switchToRegistration();
+                }
+            });
+        }
+
+        function createAvatarEditBtn() {
+            const edit = document.createElement('div');
+            edit.className = 'profile-avatar-edit';
+            edit.innerText = '✎';
+            return edit;
+        }
+
+        // Загрузка списка чатов
+        function loadChats() {
+            chatsList.innerHTML = ''; // Очистить
+            // Получить все взаимодействия в сообщениях для текущего пользователя
+            db.ref('messages').on('value', async (snapshot) => {
+                chatsList.innerHTML = '';
+                const allChats = snapshot.val();
+                if (!allChats) return;
+
+                for (const chatId in allChats) {
+                    if (chatId.includes(currentUserId)) {
+                        const partnerId = chatId.replace(currentUserId, '').replace('_', '');
+                        // Получить информацию о партнере
+                        const partnerSnapshot = await db.ref('users/' + partnerId).once('value');
+                        const partnerData = partnerSnapshot.val();
+
+                        if (partnerData) {
+                            addChatItem(chatsList, partnerId, partnerData, getStreakHtml(partnerData));
+                        }
+                    }
+                }
+            });
+        }
+
+        // HTML-код для "Огонька" в списке
+        function getStreakHtml(userData) {
+            if (userData.streak && userData.streak > 0) {
+                const icon = userData.streak % 2 === 0 ? 'Picsart_26-02-28_01-13-54-413.png' : 'Picsart_26-02-28_01-14-11-937.png';
+                return `<img src="${icon}" class="streak-img"> ${userData.streak}`;
+            }
+            return "";
+        }
+
+        // Загрузка контактов (все пользователи)
+        function loadContacts() {
+            contactsList.innerHTML = '';
+            db.ref('users').once('value', (snapshot) => {
+                snapshot.forEach((child) => {
+                    const userId = child.key;
+                    const userData = child.val();
+                    // Скрыть инкогнито и себя
+                    if (userId !== currentUserId && !userData.incognito && userData.nickname) {
+                        addChatItem(contactsList, userId, userData, getStreakHtml(userData));
+                    }
+                });
+            });
+        }
+
+        // Вспомогательная функция для добавления элемента в список (чат или контакт)
+        function addChatItem(list, userId, userData, streakHtml) {
+            const initial = userData.nickname.substring(0, 1).toUpperCase();
+            const avatarHtml = userData.avatar
+                ? `<img src="${userData.avatar}" class="avatar-circle">`
+                : `<div class="avatar-circle">${initial}</div>`;
+
+            const itemHtml = `
+                <div class="list-item" data-partner-id="${userId}" data-user-id="${userId}">
+                    ${avatarHtml}
+                    <div class="item-info">
+                        <div class="item-name">${userData.nickname}</div>
+                        <div class="item-status">${streakHtml}</div>
+                    </div>
+                </div>
+            `;
+            list.innerHTML += itemHtml;
+        }
+
+        // Открытие чата
+        function openChatWith(partnerId) {
+            // Создание chatId
+            currentChatId = currentUserId < partnerId ? `${currentUserId}_${partnerId}` : `${partnerId}_${currentUserId}`;
+
+            // Установка заголовка
+            db.ref('users/' + partnerId).once('value', (snapshot) => {
+                const partnerData = snapshot.val();
+                chatHeaderName.innerText = partnerData.nickname;
+                chatHeaderAvatar.innerText = partnerData.nickname.substring(0, 1).toUpperCase();
+                // Аватар в заголовке чата
+                if (partnerData.avatar) {
+                    const img = document.createElement('img');
+                    img.src = partnerData.avatar;
+                    img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
+                    chatHeaderAvatar.innerHTML = '';
+                    chatHeaderAvatar.appendChild(img);
+                } else {
+                    chatHeaderAvatar.innerHTML = partnerData.nickname.substring(0, 1).toUpperCase();
+                }
+            });
+
+            // Открытие экрана чата
+            showElement(chatRoom);
+            chatRoom.classList.add('active');
+            chatInput.focus();
+
+            // Прослушивание сообщений
+            loadMessages();
+        }
+
+        // Прослушивание сообщений в RTDB
+        function loadMessages() {
+            const messagesRef = db.ref('messages/' + currentChatId);
+            chatMessagesList.innerHTML = ''; // Очистить перед загрузкой
+
+            messagesRef.on('child_added', (snapshot) => {
+                const msg = snapshot.val();
+                const cls = msg.sender === currentUserId ? 'my' : 'other';
+                addMessageItem(chatMessagesList, msg.text, cls);
+                // Прокрутка вниз
+                chatMessagesList.scrollTop = chatMessagesList.scrollHeight;
+            });
+        }
+
+        // Вспомогательная функция для добавления сообщения в DOM
+        function addMessageItem(list, text, cls) {
+            const div = document.createElement('div');
+            div.className = `message ${cls}`;
+            div.innerText = text;
+            list.appendChild(div);
+        }
+
+        // Отправка сообщения
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            db.ref('messages/' + currentChatId).push({
+                sender: currentUserId,
+                text: text,
+                time: Date.now()
+            });
+
+            chatInput.value = '';
+
+            // --- ОБНОВЛЕНИЕ ОГОНЬКА (STREAK) ---
+            updateStreak();
+        }
+
+        // Простая система "Огоньки"
+        async function updateStreak() {
+            const now = Date.now();
+            const days1 = 24 * 60 * 60 * 1000;
+            const days2 = 48 * 60 * 60 * 1000;
+            const userRef = db.ref('users/' + currentUserId);
+
+            const snapshot = await userRef.once('value');
+            const userData = snapshot.val();
+            const lastInteraction = userData.lastInteraction || 0;
+            const streak = userData.streak || 0;
+
+            if (now - lastInteraction > days1 && now - lastInteraction < days2) {
+                // Серия продолжается (между 24 и 48 часами)
+                await userRef.update({ streak: streak + 1, lastInteraction: now });
+            } else if (now - lastInteraction > days2) {
+                // Серия прервалась
+                await userRef.update({ streak: 1, lastInteraction: now });
+            } else if (now - lastInteraction < days1 && streak === 0) {
+                // Первая активность
+                await userRef.update({ streak: 1, lastInteraction: now });
+            } else {
+                // Активность в течение 24 часов
+                await userRef.update({ lastInteraction: now });
+            }
+        }
+
+    </script>
+</body>
+</html>
+
