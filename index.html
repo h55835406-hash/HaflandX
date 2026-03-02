@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hafland X</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --main: #3388FF; 
+            --bg: #0B111D; 
+            --panel: #1A2232; 
+            --input-bg: #161C28;
+            --text: #ffffff; 
+            --text-sec: #8A96A8;
+            --trans: all 0.3s ease;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+        
+        /* Стили экранов */
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; background: var(--bg); }
+        .active { display: flex; }
+
+        /* Заголовок как на скрине */
+        .header-brand { padding: 40px 25px 20px; }
+        .brand-title { color: var(--main); font-size: 38px; font-weight: 800; margin: 0; }
+        .brand-version { color: var(--text-sec); font-size: 16px; margin-top: 5px; opacity: 0.7; }
+
+        .content { padding: 0 25px; flex: 1; overflow-y: auto; }
+        
+        /* Поля ввода как на скрине */
+        input { 
+            width: 100%; 
+            padding: 20px; 
+            margin: 8px 0; 
+            border-radius: 18px; 
+            border: 1px solid rgba(255,255,255,0.05); 
+            background: var(--input-bg); 
+            color: var(--text); 
+            outline: none; 
+            font-size: 16px; 
+        }
+        input::placeholder { color: #4E5A6C; }
+
+        /* Кнопка Войти / Зарегистрироваться */
+        .btn { 
+            background: var(--main); 
+            color: #fff; 
+            padding: 20px; 
+            border: none; 
+            border-radius: 18px; 
+            width: 100%; 
+            font-weight: 700; 
+            font-size: 18px; 
+            text-transform: uppercase; 
+            cursor: pointer; 
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(51, 136, 255, 0.3);
+        }
+        
+        /* Чекбокс правил */
+        .rules-box { 
+            background: var(--input-bg); 
+            padding: 15px; 
+            border-radius: 15px; 
+            margin: 10px 0; 
+            display: flex; 
+            gap: 12px; 
+            align-items: flex-start;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .rules-box input { width: auto; margin: 4px 0 0; }
+        .rules-text { font-size: 13px; color: var(--text-sec); line-height: 1.4; }
+
+        .link-btn { 
+            text-align: center; 
+            color: var(--main); 
+            margin-top: 20px; 
+            font-size: 14px; 
+            cursor: pointer; 
+            font-weight: 600;
+        }
+
+        /* Главное меню чатов */
+        .top-bar { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .top-logo { font-size: 32px; font-weight: 800; color: var(--main); }
+        
+        .search-box { position: relative; margin: 0 20px 15px; }
+        .search-box input { padding-left: 45px; border-radius: 12px; background: #161C28; border: none; font-size: 15px; padding: 14px 14px 14px 45px; }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
+
+        .tabs-row { display: flex; gap: 10px; padding: 0 20px 15px; }
+        .tab-pill { background: #1A2232; padding: 8px 16px; border-radius: 20px; font-size: 13px; color: var(--text-sec); cursor: pointer; }
+        .tab-pill.active { background: #2A364D; color: #fff; }
+
+        /* Список чатов */
+        .list-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; cursor: pointer; }
+        .list-item:active { background: rgba(255,255,255,0.05); }
+        .item-icon { width: 54px; height: 54px; border-radius: 50%; background: #1A2232; display: flex; align-items: center; justify-content: center; border: 2px solid #252D3D; }
+        .item-info { flex: 1; border-bottom: 0px solid rgba(255,255,255,0.05); padding-bottom: 0px; }
+        .item-name { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+        .item-sub { color: var(--text-sec); font-size: 13px; }
+
+        /* Навигация */
+        .nav-bar { 
+            position: fixed; bottom: 0; width: 100%; height: 75px; 
+            background: #0E1522; display: flex; justify-content: space-around; 
+            align-items: center; border-top: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 10px;
+        }
+        .nav-link { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-sec); font-size: 11px; cursor: pointer; text-decoration: none; }
+        .nav-link.active { color: var(--main); }
+        .nav-icon { font-size: 22px; }
+
+        /* Кнопка Плюс */
+        .fab { 
+            position: fixed; bottom: 95px; right: 20px; 
+            width: 56px; height: 56px; border-radius: 50%; 
+            background: var(--main); display: flex; 
+            align-items: center; justify-content: center; 
+            font-size: 24px; box-shadow: 0 4px 15px rgba(51, 136, 255, 0.4);
+            cursor: pointer;
+        }
+
+        /* Сообщения */
+        .msg { max-width: 75%; padding: 12px 16px; border-radius: 18px; margin-bottom: 8px; font-size: 15px; line-height: 1.4; }
+        .my { align-self: flex-end; background: var(--main); border-bottom-right-radius: 4px; }
+        .other { align-self: flex-start; background: var(--panel); border-bottom-left-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- Экран Входа -->
+<div id="screen-login" class="screen active">
+    <div class="header-brand">
+        <h1 class="brand-title">Hafland X</h1>
+        <div class="brand-version">Версия 1.0.0 Stable</div>
+    </div>
+    <div class="content">
+        <input type="text" id="login-n" placeholder="Никнейм">
+        <input type="password" id="login-p" placeholder="Пароль">
+        <button class="btn" onclick="login()">ВОЙТИ</button>
+        <div class="link-btn" onclick="toggleAuth(true)">Нет аккаунта? Создать</div>
+    </div>
+</div>
+
+<!-- Экран Регистрации -->
+<div id="screen-reg" class="screen">
+    <div class="header-brand">
+        <h1 class="brand-title">Hafland X</h1>
+        <div class="brand-version">Версия 1.0.0 Stable</div>
+    </div>
+    <div class="content">
+        <input type="text" id="reg-n" placeholder="Никнейм">
+        <input type="password" id="reg-p" placeholder="Пароль">
+        <div class="rules-box">
+            <input type="checkbox" id="reg-a">
+            <div class="rules-text">Я соглашаюсь с тем, что Hafland X — это независимая площадка. Сервис не несет ответственности за контент.</div>
+        </div>
+        <button class="btn" id="reg-btn" onclick="register()">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+        <div class="link-btn" onclick="toggleAuth(false)">Уже есть аккаунт? Войти</div>
+    </div>
+</div>
+
+<!-- Главный экран -->
+<div id="screen-main" class="screen">
+    <div class="top-bar">
+        <div class="top-logo">Hafland X</div>
+        <div style="font-size: 20px; opacity: 0.6;">⋮</div>
+    </div>
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Поиск чатов">
+    </div>
+    <div class="tabs-row">
+        <div class="tab-pill active">Все чаты</div>
+    </div>
+    
+    <div class="content" id="main-list" style="padding: 0;">
+        <!-- Архив и чаты -->
+        <div class="list-item">
+            <div class="item-icon">🗄️</div>
+            <div class="item-info">
+                <div class="item-name">Архив</div>
+            </div>
+        </div>
+        <div id="chats-render"></div>
+    </div>
+
+    <div class="fab" onclick="setTab('users')">➕</div>
+
+    <div class="nav-bar">
+        <div class="nav-link active" onclick="setTab('chats', this)">
+            <span class="nav-icon">💬</span><span>Чаты</span>
+        </div>
+        <div class="nav-link" onclick="setTab('users', this)">
+            <span class="nav-icon">👤</span><span>Контакты</span>
+        </div>
+        <div class="nav-link" onclick="setTab('settings', this)">
+            <span class="nav-icon">⚙️</span><span>Настройки</span>
+        </div>
+        <div class="nav-link" onclick="setTab('profile', this)">
+            <span class="nav-icon">👤</span><span>Профиль</span>
+        </div>
+    </div>
+</div>
+
+<!-- Экран Чата -->
+<div id="screen-chat" class="screen">
+    <div class="top-bar" style="border-bottom: 1px solid rgba(255,255,255,0.05)">
+        <div onclick="showScreen('screen-main')" style="cursor:pointer; font-size: 24px;">←</div>
+        <b id="chat-target">Чат</b>
+        <div style="width:24px"></div>
+    </div>
+    <div class="content" id="chat-msgs" style="display:flex; flex-direction:column; padding: 20px;"></div>
+    <div style="padding: 15px; background: #0E1522; display: flex; gap: 10px; align-items: center;">
+        <input type="text" id="msg-input" placeholder="Сообщение..." style="margin: 0; padding: 14px; border-radius: 12px;">
+        <button onclick="send()" style="background: var(--main); border: none; width: 45px; height: 45px; border-radius: 50%; color: white; cursor: pointer;">✈️</button>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+    authDomain: "hafland-x-66cdc.firebaseapp.com",
+    projectId: "hafland-x-66cdc",
+    storageBucket: "hafland-x-66cdc.firebasestorage.app",
+    messagingSenderId: "1007892951941",
+    appId: "1:1007892951941:web:692984898e47747307caec"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+let me = null, activeChatId = null, unsub = null;
+
+auth.onAuthStateChanged(async u => {
+    if(u) {
+        const d = await db.collection('users').doc(u.uid).get();
+        if(d.exists) { 
+            me = d.data(); me.id = u.uid; 
+            showScreen('screen-main'); setTab('chats'); 
+        } else { showScreen('screen-reg'); }
+    } else { showScreen('screen-login'); }
+});
+
+function toggleAuth(isReg) {
+    showScreen(isReg ? 'screen-reg' : 'screen-login');
+}
+
+async function register() {
+    const n = document.getElementById('reg-n').value.trim(), 
+          p = document.getElementById('reg-p').value, 
+          a = document.getElementById('reg-a').checked;
+    if(!n || !p || !a) return alert("Заполни всё");
+    try {
+        const r = await auth.signInAnonymously();
+        const userData = { nick: n, pass: p, inc: false, streak: 0, sName: "Огонек", bio: "", ava: "", last: Date.now() };
+        await db.collection('users').doc(r.user.uid).set(userData);
+        await db.collection('nicknames').doc(n.toLowerCase()).set({uid: r.user.uid});
+        location.reload();
+    } catch(e) { alert(e.message); }
+}
+
+async function login() {
+    const n = document.getElementById('login-n').value.trim(), 
+          p = document.getElementById('login-p').value;
+    const snap = await db.collection('nicknames').doc(n.toLowerCase()).get();
+    if(!snap.exists) return alert("Пользователь не найден");
+    const uDoc = await db.collection('users').doc(snap.data().uid).get();
+    if(uDoc.data().pass === p) {
+        alert("Вход выполнен. (В анонимном режиме просто создайте новый аккаунт или используйте тот же браузер)");
+    } else { alert("Неверный пароль"); }
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if(id !== 'screen-chat' && unsub) { unsub(); unsub = null; }
+}
+
+async function setTab(t, el) {
+    if(el) { 
+        document.querySelectorAll('.nav-link').forEach(i => i.classList.remove('active')); 
+        el.classList.add('active'); 
+    }
+    const cont = document.getElementById('chats-render');
+    cont.innerHTML = "";
+    
+    if(t === 'users') {
+        const snap = await db.collection('users').limit(20).get();
+        snap.forEach(doc => {
+            const u = doc.data();
+            if(doc.id !== me.id) {
+                cont.innerHTML += `
+                <div class="list-item" onclick="openChat('${doc.id}','${u.nick}')">
+                    <div class="item-icon">👤</div>
+                    <div class="item-info">
+                        <div class="item-name">${u.nick}</div>
+                        <div class="item-sub">Нажми, чтобы начать чат</div>
+                    </div>
+                </div>`;
+            }
+        });
+    }
+}
+
+function openChat(id, name) {
+    activeChatId = me.id < id ? me.id+'_'+id : id+'_'+me.id;
+    document.getElementById('chat-target').innerText = name;
+    showScreen('screen-chat');
+    const mDiv = document.getElementById('chat-msgs');
+    unsub = db.collection('chats').doc(activeChatId).collection('m').orderBy('t').onSnapshot(s => {
+        mDiv.innerHTML = "";
+        s.forEach(d => {
+            const m = d.data();
+            mDiv.innerHTML += `<div class="msg ${m.s === me.id ? 'my' : 'other'}">${m.txt}</div>`;
+        });
+        mDiv.scrollTop = mDiv.scrollHeight;
+    });
+}
+
+function send() {
+    const inp = document.getElementById('msg-input'), txt = inp.value.trim();
+    if(!txt) return;
+    db.collection('chats').doc(activeChatId).collection('m').add({ s: me.id, txt: txt, t: Date.now() });
+    inp.value = "";
+}
+</script>
+</body>
+</html>
+
+
