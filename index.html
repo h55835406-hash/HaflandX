@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hafland X</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --main: #3388FF;
+            --main-glow: rgba(51, 136, 255, 0.4);
+            --bg: #05080F;
+            --glass: rgba(20, 26, 38, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text: #FFFFFF;
+            --text-sec: #94A3B8;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        .light-theme {
+            --bg: #F0F4F8;
+            --glass: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --text: #0F172A;
+            --text-sec: #64748B;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0; padding: 0;
+            user-select: none;
+        }
+
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+
+        /* Анимации экранов */
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            background: var(--bg);
+            z-index: 10;
+        }
+
+        .screen.active { 
+            display: flex;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Mobile Auth Layout */
+        .auth-content {
+            flex: 1;
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .logo-box {
+            margin-bottom: 50px;
+            text-align: center;
+        }
+
+        .logo-box h1 {
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--main);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-field {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 18px 20px;
+            color: var(--text);
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 16px;
+            outline: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-field:focus {
+            border-color: var(--main);
+            box-shadow: 0 0 0 4px var(--main-glow);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .btn-action {
+            background: var(--main);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 20px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 10px 25px var(--main-glow);
+            margin-top: 10px;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .btn-action:active { transform: scale(0.96); opacity: 0.9; }
+
+        /* Main App Shell */
+        .header {
+            padding: calc(15px + var(--safe-top)) 20px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 100px;
+        }
+
+        /* Tab Navigation - Bottom */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(75px + var(--safe-bottom));
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: var(--safe-bottom);
+            z-index: 1000;
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: var(--text-sec);
+            font-size: 11px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .tab-item.active {
+            color: var(--main);
+        }
+
+        /* User Cards */
+        .user-card {
+            margin: 12px 16px;
+            padding: 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: 0.2s;
+        }
+
+        .user-card:active { transform: scale(0.98); background: rgba(255,255,255,0.03); }
+
+        .user-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--main), #60A5FA);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            object-fit: cover;
+        }
+
+        /* Chat UI */
+        .chat-bubbles {
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 8px;
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 14px 18px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .bubble.my {
+            align-self: flex-end;
+            background: var(--main);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bubble.other {
+            align-self: flex-start;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .input-bar {
+            padding: 12px 16px calc(15px + var(--safe-bottom));
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Switches & Profile */
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            margin: 0 16px 10px;
+            background: var(--glass);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .toggle-btn {
+            width: 52px; height: 30px;
+            background: #2D3748;
+            border-radius: 30px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toggle-btn.on { background: var(--main); }
+        .toggle-btn::after {
+            content: '';
+            position: absolute; top: 3px; left: 3px;
+            width: 24px; height: 24px;
+            background: white; border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-btn.on::after { left: 25px; }
+
+        .streak-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 107, 0, 0.15);
+            color: #FF6B00;
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        #my-ava-profile {
+            width: 110px; height: 110px;
+            border-radius: 35px;
+            background: var(--glass);
+            border: 3px solid var(--main);
+            object-fit: cover;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+
+    <!-- Auth Screens -->
+    <div id="screen-login" class="screen active">
+        <div class="auth-content">
+            <div class="logo-box">
+                <h1>Hafland X <img src="https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-27_19-28-17-781.png" style="width: 42px;" alt=""></h1>
+                <p style="color: var(--text-sec); margin-top: 8px;">Анонимность как стандарт</p>
+            </div>
+            <input type="text" id="l-nick" class="input-field" placeholder="Никнейм">
+            <input type="password" id="l-pass" class="input-field" placeholder="Пароль">
+            <button class="btn-action" onclick="login()">ВОЙТИ</button>
+            <p style="text-align: center; margin-top: 30px; color: var(--main); font-weight: 600;" onclick="go('screen-reg')">Зарегистрироваться</p>
+        </div>
+    </div>
+
+    <div id="screen-reg" class="screen">
+        <div class="auth-content">
+            <div class="logo-box"><h1>Регистрация</h1></div>
+            <input type="text" id="r-nick" class="input-field" placeholder="Придумайте ник">
+            <input type="password" id="r-pass" class="input-field" placeholder="Пароль">
+            <div style="display: flex; gap: 12px; margin: 10px 0 20px;">
+                <input type="checkbox" id="r-agree" style="width: 22px; height: 22px; border-radius: 6px;">
+                <span style="font-size: 13px; color: var(--text-sec); line-height: 1.3;">Я понимаю, что Hafland X анонимен и я несу ответственность за свой контент</span>
+            </div>
+            <button class="btn-action" onclick="register()">СОЗДАТЬ АККАУНТ</button>
+            <p style="text-align: center; margin-top: 30px; color: var(--main);" onclick="go('screen-login')">Уже есть аккаунт? Войти</p>
+        </div>
+    </div>
+
+    <!-- App Shell -->
+    <div id="screen-main" class="screen">
+        <div id="tab-chats" class="tab-view" style="display: flex; flex-direction: column; height: 100%;">
+            <header class="header">
+                <h2 style="font-size: 24px; font-weight: 800;">Чаты</h2>
+                <i data-lucide="search" style="color: var(--text-sec)"></i>
+            </header>
+            <div class="scroll-container">
+                <div id="active-chats"></div>
+            </div>
+        </div>
+
+        <div id="tab-people" class="tab-view" style="display: none; flex-direction: column; height: 100%;">
+            <header class="header"><h2>Люди</h2></header>
+            <div class="scroll-container" id="all-users"></div>
+        </div>
+
+        <div id="tab-options" class="tab-view" style="display: none; flex-direction: column; height: 100%;">
+            <header class="header"><h2>Настройки</h2></header>
+            <div class="scroll-container" style="padding-top: 20px;">
+                <div class="setting-item">
+                    <div><b>Инкогнито</b><p style="font-size: 12px; color: var(--text-sec);">Скрыть из списка "Люди"</p></div>
+                    <div id="tog-incog" class="toggle-btn" onclick="toggle('incog')"></div>
+                </div>
+                <div class="setting-item">
+                    <div><b>Светлая тема</b></div>
+                    <div id="tog-theme" class="toggle-btn" onclick="toggle('theme')"></div>
+                </div>
+                <div class="setting-item" onclick="renameStreak()">
+                    <div><b>Имя огонька</b><p id="st-name-val" style="color: var(--main); font-size: 14px;">Огонек</p></div>
+                    <i data-lucide="chevron-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-profile" class="tab-view" style="display: none; flex-direction: column; height: 100%;">
+            <header class="header"><h2>Профиль</h2></header>
+            <div class="scroll-container">
+                <div style="text-align: center; padding: 30px 20px;">
+                    <div style="position: relative; display: inline-block;">
+                        <img id="my-ava-profile" src="" alt="👤">
+                        <div onclick="clickAva()" style="position: absolute; bottom: 15px; right: 0; background: var(--main); padding: 8px; border-radius: 12px; border: 3px solid var(--bg);">
+                            <i data-lucide="camera" style="width: 18px; color: white;"></i>
+                        </div>
+                    </div>
+                    <h2 id="p-nick" style="margin-bottom: 5px;">...</h2>
+                    <div class="streak-info">🔥 <span id="p-streak">0</span></div>
+                    
+                    <div style="margin-top: 30px; text-align: left; padding: 0 16px;">
+                        <p style="font-size: 13px; color: var(--text-sec); margin-bottom: 8px; margin-left: 10px;">О себе</p>
+                        <textarea id="p-bio" class="input-field" style="height: 100px; resize: none;" placeholder="Пару слов о себе..." onblur="updateProfile()"></textarea>
+                    </div>
+
+                    <button onclick="logout()" style="background: rgba(255,50,50,0.1); color: #FF3232; width: calc(100% - 32px); padding: 18px; border-radius: 20px; border: none; font-weight: 700; margin-top: 20px;">ВЫЙТИ ИЗ АККАУНТА</button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="tab-bar">
+            <div class="tab-item active" onclick="switchTab('chats', this)"><i data-lucide="message-square"></i>Чаты</div>
+            <div class="tab-item" onclick="switchTab('people', this)"><i data-lucide="users"></i>Люди</div>
+            <div class="tab-item" onclick="switchTab('options', this)"><i data-lucide="settings"></i>Опции</div>
+            <div class="tab-item" onclick="switchTab('profile', this)"><i data-lucide="user"></i>Я</div>
+        </nav>
+    </div>
+
+    <!-- Chat View -->
+    <div id="screen-chat" class="screen">
+        <header class="header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i data-lucide="arrow-left" onclick="go('screen-main')"></i>
+                <img id="c-ava" style="width: 38px; height: 38px; border-radius: 12px; object-fit: cover;">
+                <div>
+                    <b id="c-nick" style="font-size: 16px;">...</b>
+                    <p style="font-size: 11px; color: #22C55E;">в сети</p>
+                </div>
+            </div>
+            <i data-lucide="more-horizontal"></i>
+        </header>
+        <div id="chat-flow" class="scroll-container chat-bubbles"></div>
+        <div class="input-bar">
+            <input type="text" id="msg-input" class="input-field" style="margin: 0; padding: 14px 20px;" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
+            <button onclick="sendMsg()" style="background: var(--main); width: 50px; height: 50px; border-radius: 18px; border: none; display: flex; align-items: center; justify-content: center; color: white;">
+                <i data-lucide="send" style="width: 22px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <input type="file" id="ava-pick" hidden accept="image/*" onchange="handleAva(this)">
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLn2gSJqs9JBfbWS2Z2PSl_V_qZxNsW-k",
+            authDomain: "hafland-x-66cdc.firebaseapp.com",
+            projectId: "hafland-x-66cdc",
+            storageBucket: "hafland-x-66cdc.firebasestorage.app",
+            messagingSenderId: "1007892951941",
+            appId: "1:1007892951941:web:692984898e47747307caec"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(), db = firebase.firestore();
+        let user = null, currentChatId = null, chatUnsub = null;
+
+        auth.onAuthStateChanged(async u => {
+            if(u) {
+                const doc = await db.collection('users').doc(u.uid).get();
+                if(doc.exists) {
+                    user = {id: u.uid, ...doc.data()};
+                    syncUI();
+                    go('screen-main');
+                } else go('screen-reg');
+            } else go('screen-login');
+        });
+
+        async function register() {
+            const n = document.getElementById('r-nick').value.trim(), p = document.getElementById('r-pass').value, a = document.getElementById('r-agree').checked;
+            if(!n || !p || !a) return;
+            const res = await auth.signInAnonymously();
+            const data = { nick: n, pass: p, incog: false, streak: 0, stName: 'Огонек', bio: '', ava: '', theme: 'dark', last: Date.now() };
+            await db.collection('users').doc(res.user.uid).set(data);
+            await db.collection('nicknames').doc(n.toLowerCase()).set({uid: res.user.uid});
+            location.reload();
+        }
+
+        async function login() {
+            const n = document.getElementById('l-nick').value.trim(), p = document.getElementById('l-pass').value;
+            const snap = await db.collection('nicknames').doc(n.toLowerCase()).get();
+            if(!snap.exists) return;
+            const uData = (await db.collection('users').doc(snap.data().uid).get()).data();
+            if(uData.pass === p) alert("Авторизуйтесь через тот же браузер или создайте новый аккаунт");
+        }
+
+        function go(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(id !== 'screen-chat' && chatUnsub) { chatUnsub(); chatUnsub = null; }
+        }
+
+        function switchTab(t, el) {
+            document.querySelectorAll('.tab-view').forEach(v => v.style.display = 'none');
+            document.getElementById('tab-'+t).style.display = 'flex';
+            document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            if(t === 'people') loadPeople();
+            lucide.createIcons();
+        }
+
+        function syncUI() {
+            document.getElementById('p-nick').innerText = user.nick;
+            document.getElementById('p-streak').innerText = user.streak;
+            document.getElementById('p-bio').value = user.bio;
+            document.getElementById('st-name-val').innerText = user.stName;
+            if(user.ava) document.getElementById('my-ava-profile').src = user.ava;
+            if(user.incog) document.getElementById('tog-incog').classList.add('on');
+            if(user.theme === 'light') { document.body.className = 'light-theme'; document.getElementById('tog-theme').classList.add('on'); }
+            lucide.createIcons();
+        }
+
+        async function loadPeople() {
+            const cont = document.getElementById('all-users'); cont.innerHTML = "";
+            const snap = await db.collection('users').get();
+            snap.forEach(d => {
+                const u = d.data();
+                if(u.incog && d.id !== user.id) return;
+                cont.innerHTML += `
+                    <div class="user-card" onclick="openChat('${d.id}','${u.nick}','${u.ava}')">
+                        <img class="user-avatar" src="${u.ava || ''}">
+                        <div style="flex:1"><b>${u.nick}</b><p style="font-size:12px;color:var(--text-sec)">${u.bio || 'Занятой человек'}</p></div>
+                        <i data-lucide="message-circle" style="width:18px; color:var(--main)"></i>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function openChat(id, nick, ava) {
+            currentChatId = user.id < id ? user.id+'_'+id : id+'_'+user.id;
+            document.getElementById('c-nick').innerText = nick;
+            document.getElementById('c-ava').src = ava || "";
+            go('screen-chat');
+            chatUnsub = db.collection('chats').doc(currentChatId).collection('m').orderBy('t','asc').onSnapshot(s => {
+                const box = document.getElementById('chat-flow'); box.innerHTML = "";
+                s.forEach(mDoc => {
+                    const m = mDoc.data();
+                    box.innerHTML += `<div class="bubble ${m.s === user.id ? 'my' : 'other'}">${m.txt}</div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+        }
+
+        function sendMsg() {
+            const inp = document.getElementById('msg-input');
+            if(!inp.value.trim()) return;
+            db.collection('chats').doc(currentChatId).collection('m').add({ s: user.id, txt: inp.value, t: Date.now() });
+            inp.value = "";
+        }
+
+        function toggle(type) {
+            const el = document.getElementById('tog-'+type);
+            el.classList.toggle('on');
+            if(type === 'incog') user.incog = el.classList.contains('on');
+            else {
+                user.theme = el.classList.contains('on') ? 'light' : 'dark';
+                document.body.className = user.theme === 'light' ? 'light-theme' : 'dark-theme';
+            }
+            db.collection('users').doc(user.id).update(user);
+        }
+
+        function renameStreak() {
+            const n = prompt("Новое имя:", user.stName);
+            if(n) { user.stName = n; syncUI(); db.collection('users').doc(user.id).update({stName: n}); }
+        }
+
+        function clickAva() { document.getElementById('ava-pick').click(); }
+        function handleAva(i) {
+            const f = i.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = e => {
+                user.ava = e.target.result;
+                document.getElementById('my-ava-profile').src = user.ava;
+                db.collection('users').doc(user.id).update({ava: user.ava});
+            };
+            r.readAsDataURL(f);
+        }
+
+        function updateProfile() {
+            user.bio = document.getElementById('p-bio').value;
+            db.collection('users').doc(user.id).update({bio: user.bio});
+        }
+
+        function logout() { auth.signOut().then(() => location.reload()); }
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
+
