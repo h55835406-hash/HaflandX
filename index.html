@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hafland X Ultra</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --main: #3388FF;
+            --main-rgb: 51, 136, 255;
+            --bg: #060912;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-thick: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --text: #F8FAFC;
+            --text-sec: #94A3B8;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        .light-theme {
+            --bg: #F0F4F9;
+            --glass: rgba(0, 0, 0, 0.02);
+            --glass-thick: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.08);
+            --text: #1E293B;
+            --text-sec: #64748B;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0; padding: 0;
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            overflow: hidden; 
+            height: 100vh;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(var(--main-rgb), 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(var(--main-rgb), 0.1) 0%, transparent 40%);
+        }
+
+        .screen {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            background: var(--bg);
+            z-index: 10;
+        }
+
+        .screen.active { 
+            display: flex;
+            animation: screenIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes screenIn { 
+            from { transform: scale(1.05); opacity: 0; filter: blur(10px); } 
+            to { transform: scale(1); opacity: 1; filter: blur(0); } 
+        }
+
+        .header {
+            padding: calc(20px + var(--safe-top)) 24px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(30px) saturate(180%); 
+            background: var(--glass-thick);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .brand-header { display: flex; align-items: center; gap: 12px; }
+        .brand-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-header img { width: 32px; height: 32px; filter: drop-shadow(0 0 8px var(--main)); }
+
+        .scroll-area { 
+            flex: 1; overflow-y: auto; 
+            padding-bottom: 120px; 
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .scroll-area::-webkit-scrollbar { display: none; }
+
+        .input-field {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 22px; padding: 18px 24px; color: var(--text);
+            font-size: 16px; width: 100%; outline: none; 
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .input-field:focus { border-color: var(--main); background: var(--glass-thick); box-shadow: 0 0 0 4px rgba(var(--main-rgb), 0.1); }
+
+        .btn-main {
+            background: var(--main); color: #fff; border: none; border-radius: 22px;
+            padding: 20px; font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 15px 30px rgba(var(--main-rgb), 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-main:active { transform: scale(0.95); opacity: 0.9; }
+
+        .nav-bar {
+            position: fixed; bottom: 20px; left: 20px; right: 20px;
+            height: 70px; background: var(--glass-thick);
+            backdrop-filter: blur(40px) saturate(150%); 
+            border: 1px solid var(--glass-border);
+            border-radius: 25px;
+            display: flex; justify-content: space-around;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-sec); transition: 0.3s; }
+        .nav-item.active { color: var(--main); }
+
+        .card {
+            margin: 12px 20px; padding: 18px; 
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); border-radius: 28px;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .card:active { transform: scale(0.98); background: var(--glass-thick); }
+
+        .avatar { width: 56px; height: 56px; border-radius: 20px; object-fit: cover; background: var(--glass-thick); }
+
+        .bubble-container { display: flex; flex-direction: column; width: 100%; position: relative; margin: 4px 0; }
+        
+        .bubble {
+            max-width: 80%; padding: 16px 20px; border-radius: 24px; font-size: 15px; 
+            line-height: 1.4; position: relative; word-wrap: break-word;
+            display: flex; align-items: flex-start; gap: 8px;
+        }
+        .bubble.my { 
+            align-self: flex-end; background: var(--main); color: white; 
+            border-bottom-right-radius: 4px; 
+            box-shadow: 0 8px 20px rgba(var(--main-rgb), 0.2);
+        }
+        .bubble.other { 
+            align-self: flex-start; background: var(--glass-thick); 
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); border-bottom-left-radius: 4px; 
+        }
+
+        .msg-more { 
+            opacity: 0.4; cursor: pointer; padding: 4px; 
+            margin-top: -4px; margin-right: -8px;
+        }
+        .msg-more:hover { opacity: 1; }
+
+        .reaction-badge {
+            position: absolute; bottom: -8px; 
+            background: var(--glass-thick); backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 4px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 5;
+        }
+        .reaction-badge.my { right: 10px; }
+        .reaction-badge.other { left: 10px; }
+        .reaction-badge img { width: 20px; height: 20px; object-fit: contain; }
+        
+        .sticker-msg { width: 150px; height: 150px; object-fit: contain; margin: 10px 0; align-self: flex-end; }
+        .sticker-msg.other { align-self: flex-start; }
+
+        .toggle { width: 52px; height: 30px; background: var(--glass-thick); border-radius: 20px; position: relative; cursor: pointer; }
+        .toggle.on { background: var(--main); }
+        .toggle::after { content: ''; position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; background: white; border-radius: 50%; transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        .toggle.on::after { left: 26px; }
+
+        .streak-tag {
+            background: rgba(255, 100, 0, 0.15); color: #FF7800;
+            padding: 6px 12px; border-radius: 14px; font-size: 13px; font-weight: 700;
+            backdrop-filter: blur(5px);
+        }
+
+        .streak-island-float {
+            position: fixed; top: 120px; right: 20px;
+            padding: 12px 20px; z-index: 2000;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            cursor: grab;
+            user-select: none;
+            animation: islandPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .streak-island-float:active { cursor: grabbing; }
+        @keyframes islandPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .kb-panel {
+            background: var(--glass-thick); backdrop-filter: blur(50px);
+            border-top: 1px solid var(--glass-border);
+            height: 0; transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden; display: flex; flex-direction: column;
+        }
+        .kb-panel.open { height: 350px; padding-bottom: var(--safe-bottom); }
+        
+        .sticker-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px;
+            overflow-y: auto; flex: 1;
+        }
+        .sticker-grid .sticker-item {
+            position: relative; aspect-ratio: 1; border-radius: 18px; 
+            background: var(--glass); overflow: hidden;
+            transition: 0.2s;
+        }
+        .sticker-grid .sticker-item:active { transform: scale(0.9); }
+        .sticker-grid .sticker-item img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .kb-tabs { display: flex; padding: 10px 20px; gap: 10px; }
+        .kb-tab { 
+            padding: 10px 18px; border-radius: 14px; font-size: 13px; font-weight: 700; 
+            color: var(--text-sec); background: var(--glass);
+        }
+        .kb-tab.active { background: var(--main); color: white; }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: var(--bg); border: 1px solid var(--glass-border); border-radius: 30px; width: 100%; max-width: 400px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+
+        #chat-msgs { padding: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+        .ctx-menu {
+            position: fixed; z-index: 3000; background: var(--glass-thick); 
+            backdrop-filter: blur(25px); border: 1px solid var(--glass-border);
+            border-radius: 20px; padding: 8px; min-width: 150px; display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .ctx-item { padding: 12px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        .ctx-item:active { background: var(--glass-thick); }
+    </style>
+</head>
+<body>
+
+    <div id="screen-login" class="screen active">
+        <div style="flex:1; padding:40px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="text-align:center; margin-bottom:60px">
+                <img src="https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-27_19-28-17-781.png" style="width:100px; filter: drop-shadow(0 0 15px var(--main));">
+                <h1 style="font-size:36px; margin-top:20px; font-weight:900; letter-spacing:-1px">Hafland X</h1>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px">
+                <input type="text" id="l-nick" class="input-field" placeholder="Никнейм">
+                <input type="password" id="l-pass" class="input-field" placeholder="Пароль">
+                <button class="btn-main" onclick="authAction('login')" style="margin-top:10px">ВОЙТИ В СИСТЕМУ</button>
+            </div>
+            <p style="text-align:center; margin-top:30px; color:var(--text-sec); font-size:14px">
+                Нет аккаунта? <span style="color:var(--main); font-weight:600" onclick="go('screen-reg')">Создать</span>
+            </p>
+        </div>
+    </div>
+
+    <div id="screen-reg" class="screen">
+        <div style="flex:1; padding:40px; display:flex; flex-direction:column; justify-content:center;">
+            <h1 style="font-size:32px; font-weight:900; margin-bottom:40px">Регистрация</h1>
+            <div style="display:flex; flex-direction:column; gap:12px">
+                <input type="text" id="r-nick" class="input-field" placeholder="Придумайте ник">
+                <input type="password" id="r-pass" class="input-field" placeholder="Пароль">
+                <div style="background:var(--glass); padding:18px; border-radius:20px; border:1px solid var(--glass-border); margin-bottom:15px">
+                    <label style="display:flex; gap:12px; font-size:12px; color:var(--text-sec); line-height:1.4">
+                        <input type="checkbox" id="r-agree" style="width:18px; height:18px; accent-color:var(--main)">
+                        Я соглашаюсь с тем, что Hafland X — это независимая площадка.
+                    </label>
+                </div>
+                <button class="btn-main" onclick="authAction('reg')">ПОДТВЕРДИТЬ</button>
+            </div>
+            <p style="text-align:center; margin-top:30px; color:var(--text-sec)" onclick="go('screen-login')">Уже с нами? <span style="color:var(--main); font-weight:600">Войти</span></p>
+        </div>
+    </div>
+
+    <div id="screen-main" class="screen">
+        <header class="header">
+            <div class="brand-header">
+                <img src="https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-27_19-28-17-781.png">
+                <h1>Hafland X</h1>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center">
+                <button onclick="showModal('modal-create-group')" style="background:var(--main); border:none; color:white; padding:8px 15px; border-radius:12px; font-weight:800; font-size:12px">ГРУППА +</button>
+                <i data-lucide="sparkles" style="width:20px; color:var(--main)"></i>
+            </div>
+        </header>
+
+        <div id="view-chats" class="tab-view scroll-area"></div>
+        <div id="view-people" class="tab-view scroll-area" style="display:none"></div>
+
+        <div id="view-options" class="tab-view scroll-area" style="display:none; padding-top:20px">
+            <div class="card" style="justify-content:space-between">
+                <div><b>Режим инкогнито</b><p style="font-size:11px; color:var(--text-sec)">Скрыть из списка "Люди"</p></div>
+                <div id="tog-incog" class="toggle" onclick="setOpt('incog')"></div>
+            </div>
+            <div class="card" style="justify-content:space-between">
+                <div><b>Светлая тема</b></div>
+                <div id="tog-theme" class="toggle" onclick="setOpt('theme')"></div>
+            </div>
+        </div>
+
+        <div id="view-profile" class="tab-view scroll-area" style="display:none; align-items:center; flex-direction:column; padding-top:40px">
+            <div style="position:relative">
+                <img id="p-ava" class="avatar" style="width:130px; height:130px; border-radius:40px; border:4px solid var(--main)">
+                <div onclick="pickAva()" style="position:absolute; bottom:0; right:0; background:var(--main); width:44px; height:44px; border-radius:18px; border:4px solid var(--bg); display:flex; align-items:center; justify-content:center">
+                    <i data-lucide="camera" style="width:20px; color:white"></i>
+                </div>
+            </div>
+            <h2 id="p-nick" style="margin-top:20px; font-size:26px; font-weight:800">...</h2>
+            <div class="streak-tag" style="margin-top:12px">🔥 <span id="p-streak">0</span></div>
+            <div style="width:100%; padding:0 24px; margin-top:35px">
+                <textarea id="p-bio" class="input-field" style="height:120px; resize:none" placeholder="Расскажите о себе..." onblur="updateMe()"></textarea>
+            </div>
+            <button onclick="logout()" style="color:#FF4B4B; background:none; border:none; margin-top:40px; font-weight:700">ВЫЙТИ ИЗ СИСТЕМЫ</button>
+        </div>
+
+        <nav class="nav-bar">
+            <div class="nav-item active" onclick="tab('chats', this)"><i data-lucide="message-circle"></i></div>
+            <div class="nav-item" onclick="tab('people', this)"><i data-lucide="compass"></i></div>
+            <div class="nav-item" onclick="tab('options', this)"><i data-lucide="layers"></i></div>
+            <div class="nav-item" onclick="tab('profile', this)"><i data-lucide="smile"></i></div>
+        </nav>
+    </div>
+
+    <div id="screen-chat" class="screen">
+        <header class="header">
+            <div style="display:flex; align-items:center; gap:16px; flex:1" onclick="showChatDetails()">
+                <i data-lucide="chevron-left" onclick="event.stopPropagation(); go('screen-main')"></i>
+                <img id="c-ava" class="avatar" style="width:44px; height:44px; border-radius:15px">
+                <div>
+                    <b id="c-nick" style="font-size:17px">...</b>
+                    <p id="c-status" style="font-size:11px; color:#22C55E">в сети</p>
+                </div>
+            </div>
+            <div style="display:flex; gap:15px">
+                <i data-lucide="flame" id="btn-streak-toggle" style="width:20px; color:var(--text-sec); display:none" onclick="toggleIsland()"></i>
+                <i data-lucide="settings" style="width:18px; color:var(--text-sec)" onclick="showChatDetails()"></i>
+            </div>
+        </header>
+        <div id="chat-msgs" class="scroll-area"></div>
+        
+        <div id="streak-island" class="streak-island-float" style="display:none" onmousedown="dragStart(event)" ontouchstart="dragStart(event)">
+            <img id="si-img" src="" style="width:24px">
+            <b id="si-name" style="font-size:14px; color:white">Огонёк</b>
+            <i data-lucide="edit-3" style="width:14px; opacity:0.6" onclick="renameFire()"></i>
+        </div>
+
+        <div style="background:var(--glass-thick); backdrop-filter: blur(40px); border-top:1px solid var(--glass-border)">
+            <div style="padding:15px 20px; display:flex; gap:12px; align-items:center">
+                <i data-lucide="sticker" onclick="toggleKB()" id="btn-sticker" style="color:var(--text-sec)"></i>
+                <input type="text" id="m-input" class="input-field" placeholder="Сообщение..." style="margin:0">
+                <button onclick="send()" style="background:var(--main); width:52px; height:52px; border-radius:18px; border:none; color:white; flex-shrink:0">
+                    <i data-lucide="send-horizontal" style="width:24px"></i>
+                </button>
+            </div>
+            <div id="kb-panel" class="kb-panel">
+                <div class="kb-tabs">
+                    <div class="kb-tab active">СТИКЕРЫ</div>
+                    <div class="kb-tab" onclick="document.getElementById('f-sticker').click()" style="background:rgba(var(--main-rgb), 0.1); color:var(--main)">+ НОВЫЙ</div>
+                </div>
+                <div class="sticker-grid" id="sticker-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="msg-ctx" class="ctx-menu">
+        <p style="font-size:10px; color:var(--text-sec); padding:4px 12px">РЕАКЦИИ</p>
+        <div id="reaction-row" style="display:flex; gap:8px; padding:8px 12px; overflow-x:auto"></div>
+        <hr style="border:none; border-top:1px solid var(--glass-border); margin:4px 0">
+        <div class="ctx-item" onclick="copyMsg()"><i data-lucide="copy" style="width:16px"></i> Копировать</div>
+        <div class="ctx-item" id="ctx-del" onclick="deleteMsg()" style="color:#FF4B4B"><i data-lucide="trash-2" style="width:16px"></i> Удалить</div>
+    </div>
+
+    <div id="modal-create-group" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom:20px">Новая группа</h2>
+            <input type="text" id="g-name" class="input-field" placeholder="Название группы" style="margin-bottom:15px">
+            <button class="btn-main" style="width:100%" onclick="createGroup()">СОЗДАТЬ</button>
+            <button onclick="closeModals()" style="width:100%; background:none; border:none; margin-top:15px; color:var(--text-sec)">ОТМЕНА</button>
+        </div>
+    </div>
+
+    <div id="modal-group-info" class="modal">
+        <div class="modal-content" style="max-height:85vh; overflow-y:auto">
+            <div style="text-align:center; margin-bottom:20px">
+                <img id="gi-ava" class="avatar" style="width:100px; height:100px; border-radius:30px" onclick="pickGroupAva()">
+                <h2 id="gi-name" style="margin-top:10px">...</h2>
+            </div>
+            <div id="gi-admin-controls" style="display:none">
+                <input type="text" id="gi-search" class="input-field" placeholder="Добавить по нику..." oninput="searchUsers(this.value)">
+                <div id="gi-search-results"></div>
+            </div>
+            <div id="gi-members"></div>
+            <button id="btn-group-action" class="btn-main" style="width:100%; background:#FF4B4B; margin-top:20px">ВЫЙТИ</button>
+            <button onclick="closeModals()" style="width:100%; background:none; border:none; margin-top:15px; color:var(--text-sec)">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <input type="file" id="f-pick" hidden onchange="upAva(this)">
+    <input type="file" id="f-sticker" hidden onchange="upSticker(this)" accept="image/*">
+    <input type="file" id="f-group-ava" hidden onchange="upGroupAva(this)">
+
+    <script>
+        const cfg = {
+            apiKey: "AIzaSyDZ4RXIlFZMaTe0jSPs3g6Sq4g_d0Vy1Ys",
+            authDomain: "haflind-24664.firebaseapp.com",
+            projectId: "haflind-24664",
+            storageBucket: "haflind-24664.firebasestorage.app",
+            messagingSenderId: "906481888723",
+            appId: "1:906481888723:web:43bbaebbe69e850e721326"
+        };
+
+        firebase.initializeApp(cfg);
+        const auth = firebase.auth(), db = firebase.firestore();
+        let me = null, activeChat = null, chatSub = null, currentOtherId = null, chatData = null, selectedMsgId = null;
+
+        const DEF_AVA = "https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-27_19-28-17-781.png";
+        const ST_ON = "https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-28_01-14-11-937.png";
+        const ST_OFF = "https://raw.githubusercontent.com/h55835406-hash/HaflandX/main/Picsart_26-02-28_01-13-54-413.png";
+
+        auth.onAuthStateChanged(async u => {
+            if(u) {
+                const d = await db.collection('users').doc(u.uid).get();
+                if(d.exists) { me = {id: u.uid, ...d.data()}; sync(); go('screen-main'); listenChats(); }
+                else go('screen-reg');
+            } else go('screen-login');
+        });
+
+        async function authAction(type) {
+            const n = document.getElementById(type==='reg'?'r-nick':'l-nick').value.trim();
+            const p = document.getElementById(type==='reg'?'r-pass':'l-pass').value;
+            if(!n || !p) return;
+            if(type === 'reg') {
+                const res = await auth.signInAnonymously();
+                const data = { nick: n, pass: p, incog: false, streak: 0, lastMsgTime: Date.now(), stName: 'Огонек', bio: '', ava: DEF_AVA, theme: 'dark', stickers: [] };
+                await db.collection('users').doc(res.user.uid).set(data);
+                await db.collection('nicknames').doc(n.toLowerCase()).set({uid: res.user.uid});
+                location.reload();
+            } else {
+                const snap = await db.collection('nicknames').doc(n.toLowerCase()).get();
+                if(snap.exists) {
+                    const uDoc = await db.collection('users').doc(snap.data().uid).get();
+                    if(uDoc.data().pass === p) { me = {id: snap.data().uid, ...uDoc.data()}; sync(); go('screen-main'); listenChats(); }
+                }
+            }
+        }
+
+        function go(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(id !== 'screen-chat') { if(chatSub) chatSub(); chatSub = null; document.getElementById('streak-island').style.display = 'none'; }
+            lucide.createIcons();
+        }
+
+        function tab(t, el) {
+            document.querySelectorAll('.tab-view').forEach(v => v.style.display = 'none');
+            document.getElementById('view-'+t).style.display = t === 'profile' ? 'flex' : 'block';
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            if(t === 'people') loadPeople();
+            lucide.createIcons();
+        }
+
+        function sync() {
+            document.getElementById('p-nick').innerText = me.nick;
+            document.getElementById('p-streak').innerText = me.streak;
+            document.getElementById('p-bio').value = me.bio;
+            document.getElementById('p-ava').src = me.ava || DEF_AVA;
+            document.getElementById('tog-incog').classList.toggle('on', me.incog);
+            document.body.className = me.theme === 'light' ? 'light-theme' : 'dark-theme';
+            document.getElementById('tog-theme').classList.toggle('on', me.theme === 'light');
+            loadStickers();
+        }
+
+        async function loadPeople() {
+            const list = document.getElementById('view-people');
+            list.innerHTML = `<h2 style="padding:25px">Люди</h2>`;
+            const snap = await db.collection('users').limit(40).get();
+            snap.forEach(d => {
+                const u = d.data();
+                if(u.incog && d.id !== me.id) return;
+                const card = document.createElement('div');
+                card.className = 'card'; card.onclick = () => openChat(d.id, u);
+                card.innerHTML = `<img src="${u.ava || DEF_AVA}" class="avatar"><div><b>${u.nick}</b><p style="font-size:12px; color:var(--text-sec)">${u.bio || 'Hafland User'}</p></div>`;
+                list.appendChild(card);
+            });
+        }
+
+        async function openChat(id, otherOrGroup) {
+            currentOtherId = id; chatData = otherOrGroup;
+            activeChat = otherOrGroup.isGroup ? id : (me.id < id ? me.id+'_'+id : id+'_'+me.id);
+            document.getElementById('c-nick').innerText = otherOrGroup.nick || otherOrGroup.name;
+            document.getElementById('c-ava').src = otherOrGroup.ava || DEF_AVA;
+            go('screen-chat');
+            
+            chatSub = db.collection('chats').doc(activeChat).collection('m').orderBy('t','asc').onSnapshot(s => {
+                const box = document.getElementById('chat-msgs'); box.innerHTML = "";
+                s.forEach(d => {
+                    const m = d.data(); const mid = d.id;
+                    const isMy = m.s === me.id;
+                    if(m.type === 'sticker') {
+                        box.innerHTML += `<img src="${m.txt}" class="sticker-msg ${isMy ? '' : 'other'}">`;
+                    } else {
+                        box.innerHTML += `
+                            <div class="bubble-container">
+                                <div class="bubble ${isMy ? 'my' : 'other'}">
+                                    <span style="flex:1">${m.txt}</span>
+                                    <i data-lucide="more-horizontal" class="msg-more" onclick="openCtx(event, '${mid}', ${isMy}, '${m.txt}')"></i>
+                                </div>
+                                ${m.reaction ? `<div class="reaction-badge ${isMy ? 'my' : 'other'}"><img src="${m.reaction}"></div>` : ''}
+                            </div>
+                        `;
+                    }
+                });
+                lucide.createIcons(); box.scrollTop = box.scrollHeight;
+            });
+            if(!otherOrGroup.isGroup) {
+                const sImg = getStreakImg(otherOrGroup);
+                if(sImg) { document.getElementById('si-img').src = sImg; document.getElementById('btn-streak-toggle').style.display='block'; }
+            }
+        }
+
+        function openCtx(e, mid, isMy, text) {
+            e.stopPropagation();
+            selectedMsgId = mid;
+            const menu = document.getElementById('msg-ctx');
+            menu.style.display = 'block';
+            menu.style.left = Math.min(e.pageX, window.innerWidth - 170) + 'px';
+            menu.style.top = Math.min(e.pageY, window.innerHeight - 250) + 'px';
+            document.getElementById('ctx-del').style.display = isMy ? 'flex' : 'none';
+            
+            const row = document.getElementById('reaction-row');
+            row.innerHTML = "";
+            (me.stickers || []).slice(0, 8).forEach(s => {
+                const img = document.createElement('img');
+                img.src = s; img.style = "width:34px; height:34px; border-radius:8px; cursor:pointer";
+                img.onclick = () => setReaction(s);
+                row.appendChild(img);
+            });
+            window.onclick = () => menu.style.display = 'none';
+        }
+
+        async function setReaction(url) {
+            await db.collection('chats').doc(activeChat).collection('m').doc(selectedMsgId).update({ reaction: url });
+        }
+
+        async function deleteMsg() {
+            await db.collection('chats').doc(activeChat).collection('m').doc(selectedMsgId).delete();
+        }
+
+        function copyMsg() {
+            const b = document.querySelector(`[onclick*="${selectedMsgId}"]`).parentElement.innerText;
+            navigator.clipboard.writeText(b);
+        }
+
+        async function send(sticker = null) {
+            const inp = document.getElementById('m-input');
+            const txt = sticker || inp.value.trim();
+            if(!txt) return;
+            if(!sticker) inp.value = "";
+            const t = Date.now();
+            const chatRef = db.collection('chats').doc(activeChat);
+            await chatRef.set({ participants: chatData.isGroup ? chatData.participants : [me.id, currentOtherId], lastT: t, lastMsg: sticker ? '[Стикер]' : txt, isGroup: !!chatData.isGroup }, {merge: true});
+            await chatRef.collection('m').add({ s: me.id, txt: txt, t: t, type: sticker ? 'sticker' : 'text' });
+        }
+
+        function toggleKB() { document.getElementById('kb-panel').classList.toggle('open'); }
+        async function loadStickers() {
+            const grid = document.getElementById('sticker-grid'); grid.innerHTML = "";
+            (me.stickers || []).forEach(s => {
+                const d = document.createElement('div'); d.className = 'sticker-item'; d.innerHTML = `<img src="${s}">`;
+                d.onclick = () => { send(s); toggleKB(); }; grid.appendChild(d);
+            });
+        }
+        function upSticker(i) {
+            const f = i.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = async e => {
+                await db.collection('users').doc(me.id).update({ stickers: firebase.firestore.FieldValue.arrayUnion(e.target.result) });
+                me.stickers.push(e.target.result); loadStickers();
+            }; r.readAsDataURL(f);
+        }
+
+        function listenChats() {
+            db.collection('chats').where('participants', 'array-contains', me.id).onSnapshot(async s => {
+                const list = document.getElementById('view-chats'); list.innerHTML = `<h2 style="padding:25px">Чаты</h2>`;
+                for (const d of s.docs) {
+                    const c = d.data(); let info = { name: c.name || "Группа", ava: c.ava || DEF_AVA };
+                    if(!c.isGroup) {
+                        const oid = c.participants.find(p => p !== me.id);
+                        const u = await db.collection('users').doc(oid).get();
+                        if(u.exists) info = { name: u.data().nick, ava: u.data().ava };
+                    }
+                    const card = document.createElement('div'); card.className = 'card';
+                    card.onclick = () => openChat(c.isGroup ? d.id : c.participants.find(p=>p!==me.id), c);
+                    card.innerHTML = `<img src="${info.ava}" class="avatar"><div style="flex:1"><b>${info.name}</b><p style="font-size:13px; color:var(--text-sec)">${c.lastMsg || ''}</p></div>`;
+                    list.appendChild(card);
+                }
+            });
+        }
+
+        function getStreakImg(u) {
+            const diff = Date.now() - (u.lastMsgTime || 0);
+            return diff < 24 * 3600000 ? ST_ON : (diff < 48 * 3600000 ? ST_OFF : null);
+        }
+
+        function toggleIsland() { const isl = document.getElementById('streak-island'); isl.style.display = isl.style.display === 'none' ? 'flex' : 'none'; }
+        
+        let isDragging = false, offsetX, offsetY;
+        function dragStart(e) {
+            isDragging = true; const t = e.type === 'touchstart' ? e.touches[0] : e;
+            const rect = document.getElementById('streak-island').getBoundingClientRect();
+            offsetX = t.clientX - rect.left; offsetY = t.clientY - rect.top;
+            document.addEventListener(e.type === 'touchstart' ? 'touchmove' : 'mousemove', dragMove);
+            document.addEventListener(e.type === 'touchstart' ? 'touchend' : 'mouseup', () => isDragging = false);
+        }
+        function dragMove(e) {
+            if(!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0] : e;
+            const isl = document.getElementById('streak-island');
+            isl.style.left = (t.clientX - offsetX) + 'px'; isl.style.top = (t.clientY - offsetY) + 'px'; isl.style.right = 'auto';
+        }
+
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        function setOpt(type) {
+            if(type==='incog') me.incog = !me.incog; else me.theme = me.theme==='light'?'dark':'light';
+            sync(); db.collection('users').doc(me.id).update({incog:me.incog, theme:me.theme});
+        }
+        function pickAva() { document.getElementById('f-pick').click(); }
+        function upAva(i) {
+            const f = i.files[0]; if(!f) return;
+            const r = new FileReader(); r.onload = e => { me.ava = e.target.result; sync(); db.collection('users').doc(me.id).update({ava:me.ava}); };
+            r.readAsDataURL(f);
+        }
+        function updateMe() { me.bio = document.getElementById('p-bio').value; db.collection('users').doc(me.id).update({bio:me.bio}); }
+        function logout() { auth.signOut().then(() => location.reload()); }
+        
+        async function createGroup() {
+            const n = document.getElementById('g-name').value.trim(); if(!n) return;
+            const id = 'group_'+Date.now();
+            await db.collection('chats').doc(id).set({ id, name:n, isGroup:true, participants:[me.id], lastT:Date.now() });
+            closeModals();
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
+
